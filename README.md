@@ -1,4 +1,4 @@
-# Data Analysis Portfolio
+# Data Analysis
 
 This repository contains a collection of data analysis projects showcasing various analytical techniques, visualization methods, and insights derived from different datasets.
 
@@ -16,12 +16,7 @@ project-name/
 
 ## 📊 Featured Projects
 
-### [Project 1: Title]
-- Brief description of the analysis goals
-- Key findings and insights
-- Technologies used
-
-### [Project 2: Title]
+### [Project 1: Wage Gap Analysis]
 - Brief description of the analysis goals
 - Key findings and insights
 - Technologies used
