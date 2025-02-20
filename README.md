@@ -33,7 +33,7 @@ project-name/
 
 1. Clone this repository
    ```bash
-   git clone https://github.com/[username]/data-analysis-portfolio.git
+   git clone https://github.com/[username]/data-analysis.git
    ```
 
 2. Set up your environment
@@ -51,9 +51,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📫 Contact
 
-- GitHub: [@username]
-- LinkedIn: [Your Name]
-- Email: your.email@example.com
+- GitHub: [@todomonkos]
+- LinkedIn: [Domonkos Toth]
 
 ---
 *Feel free to star ⭐ this repository if you find it helpful!*
