@@ -1,0 +1,233 @@
+---
+title: "The Impact of Elon Musk's 2018 'Funding Secured' Tweet:"
+output: html_document
+date: "2025-02-25"
+---
+<style>
+
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  fig.align = "center", 
+  out.width = '100%',
+  fig.width = 10,
+  fig.height = 6,
+  echo = TRUE,
+  message = FALSE, 
+  warning = FALSE)
+```
+
+<h2 class="subtitle">A Financial and Legal Examination</h2>
+<h4 class="author">Domonkos Toth</h2>
+
+# Introduction
+On August 7, 2018, Elon Musk posted a tweet that would become a watershed moment in Tesla's corporate history: "Am considering taking Tesla private at $420. Funding secured." According to the New York Times (Huang, 2023), Musk followed this initial tweet with another statement: "Investor support is confirmed. Only reason why this is not certain is that it's contingent on a shareholder vote."
+
+The tweet's immediate market impact was significant. As reported by the Wall Street Journal (Elliott & Bobrowsky, 2023), this social media post triggered a complex legal battle that would ultimately be resolved in a federal securities trial in early 2023. The investors who sued Musk alleged that his tweets were untrue and caused them to lose billions of dollars in investments. Glen Littleton, one of the plaintiffs, testified that the tweet represented "a threat to my livelihood," demonstrating the profound financial stakes of the case.
+
+After a trial lasting approximately three weeks, the Wall Street Journal noted that a nine-person jury unanimously rejected the investors' claims. The jury foreperson, Robin Cadogan, stated that the arguments about the tweet's materiality "just didn't land" and that there was "nothing there to give me an 'aha' moment."
+This unprecedented legal proceeding offers a unique opportunity to examine the intricate relationship between executive communication, market perception, and stock price dynamics through a comprehensive econometric analysis. 
+
+Therefore, the analysis will explore the immediate and short-term stock price reactions to Musk's tweet and consequently the market's interpretation of high-profile executive communications. Moreover, it will elaborate on the potential legal implications of social media disclosures by corporate leaders. In order to do this, the analysis employs an event analysis as described by MacKinley (1997) to see the effect of Musk's tweet on Tesla's stock prices and whether his influence was statistically significant. 
+
+## Setup
+### Loading (installing) necessary libraries
+```{r}
+if(!require(ggplot2)) install.packages("ggplot2")
+if(!require(quantmod)) install.packages("quantmod")
+if(!require(tidyverse)) install.packages("tidyverse")
+if(!require(lubridate)) install.packages("lubridate")
+if(!require(zoo)) install.packages("zoo")
+if(!require(lmtest)) install.packages("lmtest")
+if(!require(sandwich)) install.packages("sandwich")
+
+# load libraries
+library(ggplot2)   
+library(quantmod)
+library(tidyverse)
+library(lubridate)
+library(zoo)
+library(lmtest)
+library(sandwich)
+```
+
+### Pulling stock price data from Yahoo finance
+The stock price data is collected using the `quantmod` package which retrieves historical prices from Yahoo Finance. The adjusted closing prices for Tesla (TSLA) and the S&P 500 index (^GSPC) are extracted separately, then they are structured into a unified data frame ready for analysis. The variable of interest `adjusted close` was selected, which is the closing price after adjustments for all applicable splits and dividend distributions. We find this more appropriate than using closing price as the figure is more accurate and better reflects the real reaction of the stock. The adjusted closing price on each day was compared to the general market trend, using the adjusted S&P 500 as a benchmark. This shows whether the development in the price of the Tesla stock is following broader trends. 
+```{r}
+# date range
+start_date <- as.Date("2017-07-01")  
+end_date <- as.Date("2018-08-31")    
+
+# fetch Tesla 
+tesla_data <- getSymbols("TSLA", src = "yahoo", 
+                         from = start_date,
+                         to = end_date,
+                         auto.assign = FALSE)
+
+# fetch S&P500
+sp500_data <- getSymbols("^GSPC", src = "yahoo", 
+                         from = start_date,
+                         to = end_date,
+                         auto.assign = FALSE)
+
+# Convert to dataframes
+tesla_df <- data.frame(Date = index(tesla_data),
+                       Adjusted_TSLA = as.numeric(tesla_data[, 6]))
+
+sp500_df <- data.frame(Date = index(sp500_data),
+                       Adjusted_SP500 = as.numeric(sp500_data[, 6]))
+
+# Merge the two dataframes by Date
+merged_df <- full_join(tesla_df, sp500_df, by = "Date")
+
+# View the merged dataframe
+head(merged_df, 5)
+
+# Save to CSV if needed
+# write.csv(merged_df, "tesla_sp500_price.csv", row.names = FALSE)
+```
+# Event study
+As mentioned above, this analysis employs an event analysis to see whether Musk's controversil tweet had a significant effect on Tesla share prices. Here, the analysis follows Mackinlay (1997) in measuring the abnormal returns around a specified event date. This measurement is done by comparing the actual stock returns to expected returns during a specific time period. This approach allows us to isolate the financial market's reaction to a particular corporate event, such as Musk's 2018 tweet about taking Tesla private.
+
+## Event window
+The methodology involves several key steps. First, we have to define an *event window*, which is the period surrounding the event of interest, and and an *estimation window*, a period before the event used to establish a baseline of expected returns. Typically, the estimation window is defined as a period before the event window, often ranging from 120 to 250 trading days prior to the event date. The event window is usually symmetric around the event date, such as [-1, +1] or [-5, +5], where 0 represents the day of the event. 
+
+In the case of Musk's tweet, the event date would be **August 7, 2018**, with the event window potentially extending a few days before and after to capture the full market reaction to the announcement. Here we use 10 days prior and after the event, making a total 21 days for the event window. We do this  because it can be presumed that there were indications of the event already happening prior to the date. Additionally, it is appropriate to include more than one day in the event window as some market reactions may only materialize with a delay (Suleman, 2012). Thus, the event window spans from 24/7/2018 to 21/8/2018 as we included 10 trading days. The estimation window is from 3/7/2017 to 23/7/2018. This includes 266 days which is quite large to minimize the effect of short term fluctuations (i.e., reducing noise) and provide a more accurate estimation of the normal return model parameters. 
+```{r}
+# event study parameters
+event_date <- as.Date("2018-08-07")
+estimation_window_start <- event_date - days(130)
+estimation_window_end <- event_date - days(31)
+event_window_start <- event_date - days(10)
+event_window_end <- event_date + days(10)
+```
+
+## Actual returns 
+As we established the event window and the estimation window, we can calculate the abnormal returns in these periods, which is done by subtracting the *expected return* (typically estimated using a market model that relates the stock's returns to market returns) from the *actual observed return* during the event window. 
+
+```{r}
+# returns function
+calculate_returns <- function(prices) {
+  log_returns <- diff(log(prices))
+  return(c(NA, log_returns))
+}
+
+# calculate returns for Tesla and the market
+merged_returns <- merged_df %>%
+  arrange(Date) %>%
+  mutate(
+    TSLA_return = calculate_returns(Adjusted_TSLA),
+    SP500_return = calculate_returns(Adjusted_SP500)
+  )
+
+head(merged_returns, 5)
+```
+
+
+```{r}
+# estimation window returns
+estimation_data <- merged_returns %>%
+  filter(Date >= estimation_window_start & Date <= estimation_window_end) %>%
+  drop_na(TSLA_return, SP500_return) 
+head(estimation_data, 5)
+
+# event window returns
+event_window_data <- merged_returns %>%
+  filter(Date >= event_window_start & Date <= event_window_end) %>%
+  mutate(event_day = as.numeric(Date - event_date))
+head(event_window_data, 5)
+```
+
+## Marekt Model Estimation
+```{r}
+# market model estimation
+market_model <- lm(TSLA_return ~ SP500_return, data = estimation_data)
+
+# extract parameters
+alpha <- coef(market_model)[1]
+beta <- coef(market_model)[2]
+
+print(paste("Alpha:", round(alpha, 4)))
+print(paste("Beta:", round(beta, 4)))
+```
+
+## Abnormal returns 
+As we established the event window and the estimation window, we can calculate the abnormal returns in these periods, which is done by subtracting the *expected return* (typically estimated using a market model that relates the stock's returns to market returns) from the *actual observed return* during the event window. 
+```{r}
+# Calculate Expected and Abnormal Returns
+event_window_analysis <- event_window_data %>%
+  mutate(
+    expected_return = alpha + beta * SP500_return,
+    abnormal_return = TSLA_return - expected_return,
+    cumulative_abnormal_return = cumsum(abnormal_return)
+  )
+```
+
+## Statistical siginificance 
+Statistical tests are then applied to determine whether these abnormal returns are statistically significant, helping to quantify the economic impact of the event on the company's market valuation.
+```{r}
+# Significance Test
+# Robust standard errors
+covariance <- vcovHC(market_model, type = "HC1")
+robust_se <- sqrt(diag(covariance))
+
+# t-test for abnormal returns
+t_test_results <- event_window_analysis %>%
+  summarise(
+    mean_abnormal_return = mean(abnormal_return, na.rm = TRUE),
+    se_abnormal_return = sd(abnormal_return, na.rm = TRUE) / sqrt(n()),
+    t_statistic = mean_abnormal_return / se_abnormal_return,
+    p_value = 2 * (1 - pt(abs(t_statistic), df = n() - 2))
+  )
+```
+
+```{r}
+# Abnormal Returns Plot
+ar_plot <- ggplot(event_window_analysis, aes(x = event_day, y = abnormal_return)) +
+  geom_bar(stat = "identity", fill = "blue", alpha = 0.7) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "green") +
+  labs(
+    title = "Abnormal Returns around Musk's Tweet",
+    x = "Days Relative to Event",
+    y = "Abnormal Return"
+  ) +
+  theme_minimal()
+
+ar_plot
+```
+
+```{r}
+# Cumulative Abnormal Returns Plot
+car_plot <- ggplot(event_window_analysis, aes(x = event_day, y = cumulative_abnormal_return)) +
+  geom_line(color = "blue", linewidth = 1) +
+  geom_point(color = "red") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "green") +
+  labs(
+    title = "Cumulative Abnormal Returns around Musk's Tweet",
+    x = "Days Relative to Event",
+    y = "Cumulative Abnormal Return"
+  ) +
+  theme_minimal()
+car_plot
+```
+
+```{r}
+# Print results
+print("Market Model Parameters:")
+print(summary(market_model))
+
+print("Event Study Results:")
+print(t_test_results)
+```
+
+```{r}
+summary_table <- event_window_analysis %>%
+  select(Date, event_day, TSLA_return, SP500_return, 
+         expected_return, abnormal_return, cumulative_abnormal_return)
+print(summary_table)
+```
+
+
