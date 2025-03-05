@@ -1,14 +1,14 @@
 # Data Analysis
 
-This repository contains a collection of data analysis projects showcasing various analytical techniques, visualization methods, and insights derived from different datasets.
+This repository contains a collection of some data analysis projects that I completed, showcasing various analytical techniques, visualization methods, and insights derived from different datasets in Python and R.
 
 ## 🗂️ Project Structure
 
 Each project is contained in its own directory with the following structure:
 ```
 project-name/
-├── data/              # Raw and processed datasets
-├── notebooks/         # Jupyter notebooks with analysis
+├── data/             # Raw and processed datasets
+├── notebooks/        # Jupyter notebooks with analysis
 ├── scripts/          # Supporting Python scripts
 ├── visualizations/   # Generated plots and dashboards
 └── README.md         # Project-specific documentation
@@ -33,7 +33,7 @@ project-name/
 
 1. Clone this repository
    ```bash
-   git clone https://github.com/[username]/data-analysis.git
+   git clone https://github.com/todomonkos/data-analysis.git
    ```
 
 2. Set up your environment
