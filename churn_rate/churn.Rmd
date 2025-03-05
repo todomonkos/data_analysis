@@ -1,0 +1,946 @@
+---
+title: "Churn analysis"
+output: html_document
+date: "2025-02-05"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Churn Analysis
+
+## Business Understanding
+Customer Churn is a topic that matters to organizations of all sizes. Customer churn occurs when customers stop doing business with a company, also known as customer attrition. For instance, churn (loss of customers to competition) is a major problem for telecom companies because it is well known that it is more expensive to acquire a new customer than to keep an existing customer. 
+
+Companies are interested to know who is gonna get churned so they can proactively go to the customer to provide them better services and turn customers' decisions in the opposite direction. Companies are interested to know:
+* **What** are the causes or reasons of losing customers?
+* **Why** are we losing them?
+* **How** do we stop them from leaving the company?
+
+## Exploratory Data Analysis
+Here, I use Exploratory Data Analysis to explore the *churn* dataset to visualize and identify which factors contribute to customer churn.
+
+### Setup
+Install (if needed) and load necessary packages:
+```{r}
+if(!require(ggplot2)) install.packages("ggplot2")
+if(!require(liver)) install.packages("liver")
+if(!require(GGally)) install.packages("GGally")
+if(!require(psych)) install.packages("psych")
+if(!require(ggcorrplot)) install.packages("ggcorrplot")
+
+library(ggplot2)
+library(liver)
+library(GGally)
+library(psych)
+library(ggcorrplot)
+```
+
+**Load the dataset and inspect its structure:**
+```{r}
+data(churn) #load the "churn" dataset
+str(churn) #compactly display the structure of the data
+```
+**Dataset**: The *churn* data set is available in the **R** package [*liver*](https://CRAN.R-project.org/package=liver). The data set contains `r nrow(churn)` rows (customers) and `r ncol(churn)` columns (features). The dataset has `r ncol(churn) - 1` predictors along with a target variable `churn` as a binary variable, which indicates whether customers churned (left the company) or not. You can find more information about this dataset [here](https://rdrr.io/cran/liver/man/churn.html).
+
+**Summary of the dataset:**
+```{r}
+summary(churn)
+```
+**Assessing the type of each feature:**
+
+```{r}
+binary_vars <- names(churn)[sapply(churn, function(x) length(unique(x)) == 2)]
+nominal_vars <- names(churn)[sapply(churn, is.factor)]
+numerical_vars <- names(churn)[sapply(churn, is.numeric)]
+
+cat("Binary Variables:", binary_vars, "\n")
+cat("Nominal Variables:", nominal_vars, "\n")
+cat("Numerical Variables:", numerical_vars, "\n")
+```
+
+```{r}
+column_classes <- lapply(churn, class)
+classify_variable <- function(class) {
+  if (class %in% c("factor", "character")) {
+    return("categorical")
+  } else if (class == "integer") {
+    return("discrete")
+  } else if (class %in% c("numeric", "double")) {
+    return("continuous")
+  } else {
+    return("other")
+  }
+}
+
+variable_types <- sapply(column_classes, function(cls) classify_variable(cls[[1]]))
+variable_types
+```
+### Investigate the target variable *churn*
+```{r}
+summary(churn$churn)
+```
+**The proportion of churners (customer churn rate):**
+```{r}
+total_customers <- nrow(churn)
+num_churners <- sum(churn$churn == "yes")
+churn_rate <- num_churners / total_customers
+churn_rate
+```
+
+```{r fig.align = 'default', fig.show = "hold", out.width = "50%"}
+ggplot(data = churn) + 
+    geom_bar(aes(x = churn), fill = c("red", "blue")) +
+    labs(title = "Bar plot for the target variable 'churn'")  
+```
+### Investigate the variable *International Plan*
+Here is a contingency table with margins for International Plan (`intl.plan`) with `churn`:
+```{r}
+addmargins(table(churn$churn, churn$intl.plan, dnn = c("Churn", "International Plan")))
+```
+
+**Bar chart for International Plan:**
+```{r fig.align = 'default', fig.show = "hold", out.width = "50%"}
+ggplot(data = churn) + 
+  geom_bar(aes(x = intl.plan, fill = churn), position = "fill") +
+  scale_fill_manual(values = c("red", "blue")) 
+```
+**Interpretation of the plot:**
+This plot uses the position="fill", showing the proportions of churners and non-churners, it is clear to see the relationship between churning and having an international plan. The churn rate is greater among those who have international plan compared to those who do not have an international plan. 
+
+### Investigate variable "*voice mail plan*"
+Here is a contingency table with margins for Voice Mail Plan (`voice.plan`) with `churn`:
+```{r}
+addmargins(table(churn$churn, churn$voice.plan, dnn = c("Churn", "Voice Mail Plan")))
+```
+```{r fig.align = 'default', fig.show = "hold", out.width = "50%"}
+ggplot(data = churn) + 
+  geom_bar(aes(x = voice.plan, fill = churn), position = "fill") +
+  scale_fill_manual(values = c("red", "blue")) 
+```
+**Interpretation of the plot:**
+Here, it seems that the churn rate is lower among those who do have a voice plan, while the churn rate is higher among those who do not have a voice plan.
+
+### Investigate variable "*customer service calls*" 
+Here, we are interested in the relationship between variable "*customer service calls*" and the target variable "*churn*". 
+
+First, we report the histogram of the variable "*customer service calls*" including "churn" overlay:
+
+```{r}
+ggplot(data = churn) +
+  geom_bar(aes(x = factor(customer.calls), fill = churn), position = "stack") +
+  scale_fill_manual(values = c("red", "blue")) 
+```
+We also report the *proportional* histogram of variable "*customer service calls*":
+```{r}
+ggplot(data = churn) +
+  geom_bar(aes(x = factor(customer.calls), fill = churn), position = "fill") +
+  scale_fill_manual(values = c("red", "blue")) 
+```
+**Interpretation of the plots:**
+From 0 to 3 costumer calls the churn rate remains similar. However, if consumers called more than 3 times (4 to 9 times) the churn rate increases significantly. Quite understandable that the proportion of churning is 100 percent among people calling 9 times, since normally you should not have to call the customer service 9 times to have a functioning service. Also we could see that most customers only call 0, 1 or 2 times. 
+
+### Investigate variable "*Day Minutes*"
+Here, we are interested to investigate the relationship between variable Day Minutes and the target variable *Churn*:
+```{r}
+ggplot(data = churn) +
+  geom_boxplot(aes(x = churn, y = day.mins), fill = c("red", "blue")) 
+```
+
+To allow for a more precise analysis, we plot the data as frequency density plot:
+```{r}
+ggplot(data = churn) +
+  geom_density(aes(x = day.mins, fill = churn), alpha = 0.3)
+```
+**Interpretation of the plots:**
+
+### Investigate variable "*International Calls*" 
+
+Here, we are interested to investigate the relationship between variable International Calls and the target variable `churn`. To see the relationship between variable International Calls and the target variable *churn*, we report the histogram of variable International Calls including Churn overlay:
+
+```{r}
+ggplot(data = churn) +
+  geom_bar(aes(x = intl.calls, fill = churn), position = "stack") +
+  scale_fill_manual(values = c("red", "blue")) 
+```
+
+We also report the *proportional* histogram of variable International Calls including Churn overlay:
+
+```{r}
+ggplot(data = churn) +
+  geom_bar(aes(x = intl.calls, fill = churn), position = "fill") +
+  scale_fill_manual(values = c("red", "blue")) 
+```
+
+To see the relationship between variable International Calls and the target variable *churn*, we can also use are boxplot to identify outliers with ease:
+
+```{r}
+ggplot(data = churn) +
+  geom_boxplot(aes(x = churn, y = intl.calls), fill = c("red", "blue")) 
+```
+
+**What would be your interpretation of the above boxplot?**
+
+### Detect Correlated Variables 
+
+To visualize the correlation matrix between the "day.mins", "Day.Calls", "Day.Charge", "Eve.Mins", "Eve.Calls", "Eve.Charge", "Night.Mins", "Night.Calls", and "Night.Charge", we could use the `ggcorr` function as follows
+
+```{r message = FALSE, warning = FALSE, fig.align='center' }
+variable_list = c("intl.mins",  "intl.calls",  "intl.charge", 
+                   "day.mins",   "day.calls",   "day.charge",
+                   "eve.mins",   "eve.calls",   "eve.charge",
+                   "night.mins", "night.calls", "night.charge")
+
+cor_matrix = cor(churn[, variable_list])
+
+ggcorrplot(cor_matrix, type = "lower", lab = TRUE, lab_size = 3)
+```
+
+```{r fig.align = 'default', fig.show="hold", out.width="50%"}
+pairs.panels(churn[, c("intl.mins", "intl.calls", "intl.charge")]) 
+
+pairs.panels(churn[, c("day.mins", "day.calls", "day.charge")]) 
+
+pairs.panels(churn[, c("eve.mins", "eve.calls", "eve.charge")]) 
+
+pairs.panels(churn[, c("night.mins", "night.calls", "night.charge")]) 
+```
+
+**What would be your interpretation of the above correlation matrix plots?**
+
+### Confidence interval for mean
+
+Data analysts often perform subgroup analyses. This is, to estimate the behavior of specific subsets of customers instead of the entire customer base.
+
+Here, in the *churn* dataset, we want to estimate the mean number of customer service call for customers who have both options *International Plan* and the *Voice Mail Plan* also called the company more than 220 minutes during the days.
+
+Since we want to work with the subset of the dataset for customers with the International Plan and the Voice Mail Plan and who have more than 220 day minutes. By the following code we create a subset of the data:
+
+```{r}
+sub_data = subset(churn, (intl.plan == "yes") & (voice.plan == "yes") & (day.mins > 220)) 
+```
+
+Now, by using the function `t.test()` we run our two-sided hypothesis test as following with a level of significance $\alpha$=0.05
+
+```{r}
+ci95 <- t.test(x = sub_data$customer.calls, conf.level = 0.95)$"conf.int"
+ci95
+```
+
+**Report the 95% confidence interval? What is your interpretation of this confidence interval?**
+Based on the results from the t-test, the 95% confidence interval for the mean number of `customer.calls` for customers who have both the `intl.plan` and the `voice.plan`, and who called more than 220 minutes during the day, is approximately:
+```{r}
+cat("(", round(ci95[1], 2), ", ", round(ci95[2], 2), ")", sep = "")
+```
+This means that you can be 95% confident that the true population mean number of customer service calls for this specific subset of customers falls within the interval from 0.91 to 2.09. Thus, on average, customers in this subgroup make between approximately 1 and 2 customer service calls, highlighting potential behavior specifics to these customers.
+
+### Hypothesis testing for mean
+
+Here, based on the churn dataset, we want to test whether the mean number of Customer Service Calls for customers with the International Plan and the Voice Mail Plan and who have more than 220 day minutes differs from 2.4, with a level of significance $\alpha$=0.05.
+
+In this case, our hypothesis is:
+
+\[
+\bigg\{
+\begin{matrix}
+          H_0:  \mu = 2.4 \\
+          H_a:  \mu \neq 2.4
+\end{matrix}
+\]
+
+Since we want to work with the subset of the dataset for customers with the International Plan and the Voice Mail Plan and who have more than 220 day minutes. By the following code we create a subset of the data:
+
+```{r}
+sub_data = subset(churn, (intl.plan == "yes") & (voice.plan == "yes") & (day.mins > 220)) 
+```
+
+Now, by using the function `t.test()` we run our two-sided hypothesis test as following with a level of significance $\alpha$=0.05
+
+```{r}
+test_result_1 <- t.test(x = sub_data$customer.calls, 
+        mu = 2.4, 
+        alternative = "two.sided", 
+        conf.level = 0.95)
+test_result_1
+```
+
+**Report the value of *p*-value. Explain you accept or reject the null hypothesis, at $\alpha=0.05$.** </br>
+p-value: `r round(test_result_2$p.value, 6)` </br>
+Sample Mean: `r round(test_result_2$estimate, 4)` </br>
+95% Confidence Interval: `r round(test_result_2$conf.int[1], 6)` to `r round(test_result_2$conf.int[2], 6)` </br>
+
+Since the p-value `r round(test_result_2$p.value, 6)` is less than the significance level $\alpha=0.05$, we reject the null hypothesis. 
+
+This indicates that there is strong evidence to suggest that the mean number of customer service calls differs from 1.5. The sample mean was found to be `r round(test_result_2$estimate, 4)`, supporting our decision to reject the null hypothesis.
+
+## Hypothesis testing for mean
+
+For the variable “customer.calls”, we want to test whether the mean number of customer service calls is greater than 1.5. Set the level of significance to be 0.01.
+
+Our hypothesis is right-tailed test as follow
+\[
+\bigg\{
+\begin{matrix}
+          H_0:  \mu \leq 1.5 \\
+          H_a:  \mu > 1.5
+\end{matrix}
+\]
+
+Note that the alternative hypothesis is the claim to be tested. The level of significance is $\alpha = 0.01$ thus confidence level is $1-\alpha =0.99$.
+
+```{r}
+test_result_3 <- t.test(x = churn$customer.calls, 
+        mu = 1.5, 
+        alternative = "greater", 
+        conf.level = 0.99)
+test_result_3
+```
+
+**Report the value of *p*-value. Explain you accept or reject the null hypothesis, at $\alpha=0.01$.** </br>
+p-value: `r round(test_result_3$p.value, 8)` </br>
+Sample Mean: `r round(test_result_3$estimate, 4)` </br>
+99% Confidence Interval: `r round(test_result_3$conf.int[1], 6)` to `Inf` </br>
+
+Since the p-value `r round(test_result_3$p.value, 8)` is less than the significance level $\alpha=0.01$, we reject the null hypothesis.
+
+This indicates that there is strong evidence to suggest that the mean number of customer service calls is greater than 1.5. The sample mean was found to be `r round(test_result_3$estimate, 4)`, supporting our decision to reject the null hypothesis.
+
+## Confidence interval for proportion
+
+We are interested to know a 95% confidence interval for the population mean of the 
+proportion $\pi$ of churners among the entire population of the company’s customers. 
+
+In **R**, by using function `prop.test()`, we can have a confidence interval for the proportion $\pi$ of the population as follows
+
+```{r}
+ci_result <- prop.test(table(churn$churn), conf.level = 0.95)$"conf.int"
+ci_result
+```
+
+**Report the 95% confidence interval? What is your interpretation of this confidence interval?**
+The 95% confidence interval for the population proportion of churners is: </br>
+Confidence Interval: `r round(ci_result[1], 4)` to `r round(ci_result[2], 4)`
+
+This means that we can be 95% confident that the true population proportion of churners lies between `r round(ci_result[1], 4)` and `r round(ci_result[2], 4)`. This suggests that approximately `r round(ci_result[1], 4) * 100`% to `r round(ci_result[2], 4) * 100`% of the company’s customers are expected to churn.
+
+## Hypothesis testing for proportion
+
+In the *churn* dataset, the target variable is the *churn* variable. For this variable we want to test at $\alpha=0.01$ weather the proportion of customer churn $\pi$ is less than 0.14.
+
+Note that the alternative hypothesis is the claim to be tested. The level of significance is $\alpha = 0.01$ thus confidence level is $1-\alpha =0.99$. In **R**, for the hypothesis testing of proportion we use the `prop.test()` function as follows: 
+
+```{r}
+prop.test(table(churn$churn), 
+           p = 0.14, 
+           alternative = "less", 
+           conf.level = 0.99)
+```
+
+a. **Specify the null and alternative hypotheses?** </br>
+Null and Alternative Hypotheses: </br>
+\[
+\bigg\{
+\begin{matrix}
+          H_0:  \mu \leq 0.14 \\
+          H_a:  \mu > 0.14
+\end{matrix}
+\]
+
+b. **Explain you accept or reject the null hypothesis, at $\alpha=0.01$.** </br>
+From the test, the p-value is 0.6045. Comparing this p-value to the significance level (α=0.01), we fail to reject the null hypothesis.
+
+## Two-sample T-test
+
+In the churn dataset, is there a relationship between the target variable (churn) and the variable "*customer service call*" (`customer.calls`)? 
+
+We run the two-sample T-test for the difference in means for the number of customer service calls for churners and non-churners:
+
+```{r}
+test_two_sample <- t.test(customer.calls ~ churn, data = churn)
+```
+
+a. **Report the hypotheses $H_0$ and $H_1$. Report the value of *p*-value. Explain you accept or reject the null hypothesis, at $\alpha=0.05$.** </br>
+
+ \[
+  H_0: \mu_{\text{churn=yes}} = \mu_{\text{churn=no}}
+  \]
+   \[
+  H_1: \mu_{\text{churn=yes}} \neq \mu_{\text{churn=no}}
+  \]
+  
+Since the p-value `r format(test_two_sample$p.value, scientific = TRUE)` is much smaller than the significance level (α=0.05), we reject the null hypothesis.
+
+b. **What conclusions can be drawn regarding "a relationship between the two varibles".** </br>
+There is strong evidence to conclude that churners make significantly more customer service calls compared to non-churners. The confidence interval `r round(test_two_sample$conf.int[1], 6)` to `r round(test_two_sample$conf.int[2], 6)` suggests that the true difference in means is between `r round(test_two_sample$conf.int[1], 6)` and `r round(test_two_sample$conf.int[2], 6)` more calls for churners.
+
+## Hypothesis testing for mean
+
+In the *churn* dataset, for the variable “day.mins”, test whether the mean number of "Day Minutes" is greater than 180. Set the level of significance to be 0.05.
+
+Null and Alternative Hypotheses:
+
+\[
+\bigg\{
+\begin{matrix}
+          H_0:  \mu \leq 180 \\
+          H_a:  \mu > 180
+\end{matrix}
+\]
+
+```{r}
+t_test_result <- t.test(x = churn$day.mins, 
+                         mu = 180, 
+                         alternative = "greater", 
+                         conf.level = 0.95)
+
+t_test_result
+```
+p-value: `r t_test_result$p.value`
+
+Since the p-value is `r t_test_result$p.value`, which is greater than the significance level of α=0.05, we fail to reject the null hypothesis.
+
+## Hypothesis testing for proportion
+
+In the *churn* dataset, for the variable "`intl.plan`" test at $\alpha=0.05$ weather the proportion of customers who have international plan is less than 0.15.
+
+Null and Alternative Hypotheses:
+
+\[
+\bigg\{
+\begin{matrix}
+          H_0:  \mu \leq 180 \\
+          H_a:  \mu > 180
+\end{matrix}
+\]
+
+```{r}
+prop_test_result <- prop.test(table(churn$intl.plan == "yes"), 
+                              p = 0.15, 
+                              alternative = "less", 
+                              conf.level = 0.95)
+prop_test_result
+```
+
+p-value: `r round(prop_test_result$p.value, 4)`
+
+Since the p-value is `r round(prop_test_result$p.value, 4)`, which is much greater than the significance level of α=0.05, we fail to reject the null hypothesis.
+
+This indicates that there is not enough evidence to suggest that the proportion of customers with an international plan is less than 0.15. 
+
+## Hypothesis testing for mean
+
+In the *churn* dataset, test whether there is a relationship between the target variable “`churn`” and the variable “`intl.charge`” with $\alpha=0.05$. 
+
+Null and Alternative Hypotheses:
+
+ \[
+  H_0: \mu_{\text{churn=yes}} = \mu_{\text{churn=no}}
+  \]
+   \[
+  H_1: \mu_{\text{churn=yes}} \neq \mu_{\text{churn=no}}
+  \]
+
+```{r}
+t_test_result <- t.test(intl.charge ~ churn, data = churn)
+t_test_result
+```
+p-value: `r round(t_test_result$p.value, 4)`
+
+Since the p-value is `r round(t_test_result$p.value, 4)`, which is much less than the significance level of α=0.05, we reject the null hypothesis. This indicates that there is a significant difference in the mean international charge between churners and non-churners.
+
+## Applying kNN algorithm
+## Data Preparation
+
+First, partition the *churn* dataset randomly into two groups as a train set (80%) and test set (20%). Then, validate the partition for a couple of variables; for example, you could validate the partition by testing whether the proportion of churners differs between the two datasets. Or you could validate the partition by testing whether the population means for the number of customer service calls differs between the two datasets.
+
+**Data set partitioning **
+```{r}
+set.seed(5)
+
+data_sets_churn = partition(data = churn, prob = c(0.8, 0.2))
+
+train_set_churn = data_sets_churn$part1
+test_set_churn  = data_sets_churn$part2
+
+actual_test_churn  = test_set_churn$churn
+```
+
+**Validating the partitioning with a Two-Sample Z-Test**<br>
+*Null Hypothesis (H₀)*: The proportion of customers who churn is the same in both the train and test datasets.<br>
+  \[
+  H_0: \pi_1 = \pi_2
+  \]
+  
+*Alternative Hypothesis (H₁)*: The proportion of customers who churns is different between the train and test datasets. <br>
+  \[
+  H_1: \pi_1 \neq \pi_2
+  \]
+Where \(\pi_1\) is the proportion of customers subscribing in the training set, and \(\pi_2\) is the proportion of customers subscribing in the test set.
+
+```{r}
+x1_churn = sum(train_set_churn$churn == "yes")
+x2_churn = sum(test_set_churn$churn == "yes")
+
+n1_churn = nrow(train_set_churn)
+n2_churn = nrow(test_set_churn)
+
+prop.test(x = c(x1_churn, x2_churn), n = c(n1_churn, n2_churn))
+```
+*The result of the test* <br>
+The p-value is 0.3499, thus, we fail to reject the null hypothesis.Therefore, there is no significant difference between the two proportions at a 5% significance level. 
+
+## Applying the kNN algorithm using all predictors
+
+Based on the training dataset, find the k-nearest neighbor for the test data set, for the case k = 10; For this question, use all the 19 predictors of the *churn* dataset for the analysis. Note that you should use min-max normalization and transfer the predictors. Then, evaluate the accuracy of the predictions by reporting 
+
+```{r}
+formula_churn_long = churn ~ state + area.code + account.length + voice.plan + voice.messages + intl.plan + intl.mins + intl.calls + intl.charge + day.mins + day.calls + day.charge + eve.mins + eve.calls + eve.charge + night.mins + night.calls + night.charge + customer.calls 
+
+predict_knn_10_churn = kNN(formula_churn_long, train = train_set_churn, test = test_set_churn, transform = "minmax", k = 10)
+```
+
+**Confusion Matrix**
+```{r}
+(conf_knn_10_churn = conf.mat(predict_knn_10_churn, actual_test_churn))
+
+conf.mat.plot(predict_knn_10_churn, actual_test_churn, main = "kNN with k = 10")
+
+accuracy_knn_10_churn <- mean(predict_knn_10_churn == actual_test_churn)
+print(accuracy_knn_10_churn)
+```
+**MSE**
+```{r}
+MSE_10_churn = mse(predict_knn_10_churn, actual_test_churn)
+MSE_10_churn
+```
+Since the `MSE_10_churn` is small, the performance of the model is good. 
+
+**ROC curve & AUC**
+```{r}
+prob_knn_10_churn = kNN(formula_churn_long, train = train_set_churn, test = test_set_churn, k = 10, type = "prob")[, 1]
+
+roc_knn_10_churn = roc(actual_test_churn, prob_knn_10_churn)
+
+ggroc(roc_knn_10_churn, size = 0.8) + 
+    theme_minimal() + ggtitle("ROC plot") +
+    scale_color_manual(values = c("red", "blue"), 
+    labels = paste("k=10; AUC=", round(auc(roc_knn_10), 3)
+             )) +
+    theme(legend.title = element_blank()) +
+    theme(legend.position = c(.7, .3), text = element_text(size = 17))
+
+auc_knn_10_churn = auc(roc_knn_10_churn)
+print(paste("AUC for k=10:", round(auc_knn_10_churn, 3)))
+```
+The `auc_knn_10_churn` is quite small. Being close to 0.663 is suggests that the model is a little bit better than random guessing. This might be the reason for the many false negatives in the confusion matrix. 
+
+## Applying the KNN algorithm using part of predictors
+
+In the previous exercises for the *churn* dataset, you suppose to use all the 19 predictors for the analysis. But we know based on the lecture of week 2, we should use only those predictors that have a relationship with the target variable. So, here we use the following predictors:
+
+`account.length`, `voice.plan`, `voice.messages`, `intl.plan`, `intl.mins`, `day.mins`, `eve.mins`, `night.mins`, and `customer.calls`.
+
+First, based on the above predictors, find the k-nearest neighbor for the test set, based on the training dataset, for the k = 10. Note that you should use min-max normalization and transfer the predictors. Then, evaluate the accuracy of the predictions by reporting 
+
+```{r}
+formula_churn_short <- churn ~ account.length + voice.plan + voice.messages + intl.plan + intl.mins + day.mins + eve.mins + night.mins+ customer.calls
+
+predict_knn_10_churn_short = kNN(formula_churn_short, train = train_set_churn, test = test_set_churn, transform = "minmax", k = 10)
+```
+
+**Confusion Matrix**
+```{r}
+(conf_knn_10_churn_short = conf.mat(predict_knn_10_churn_short, actual_test_churn))
+conf.mat.plot(predict_knn_10_churn_short, actual_test_churn, main = "kNN with k = 10")
+
+accuracy_knn_10_churn_short <- mean(predict_knn_10_churn_short == actual_test_churn)
+print(accuracy_knn_10_churn_short)
+```
+
+**MSE**
+```{r}
+MSE_10_churn_short = mse(predict_knn_10_churn_short, actual_test_churn)
+MSE_10_churn_short
+```
+**ROC curve & AUC**
+```{r}
+prob_knn_10_churn_short = kNN(formula_churn_short, train = train_set_churn, test = test_set_churn, k = 10, type = "prob")[, 1]
+
+roc_knn_10_churn_short = roc(actual_test_churn, prob_knn_10_churn_short)
+
+ggroc(roc_knn_10_churn_short, size = 0.8) + 
+    theme_minimal() + ggtitle("ROC plot") +
+    scale_color_manual(values = c("red", "blue"), 
+    labels = paste("k=10; AUC=", round(auc(roc_knn_10), 3)
+             )) +
+    theme(legend.title = element_blank()) +
+    theme(legend.position = c(.7, .3), text = element_text(size = 17))
+
+auc_knn_10_churn_short = auc(roc_knn_10_churn_short)
+print(paste("AUC for k=10:", round(auc_knn_10_churn_short, 3)))
+```
+Compare the results with the previous section. What would be your conclusion? <br>
+Using only the predictors which have a meaningful effect on the target variable significantly improved the accuracy of the model. All indicators showed higher levels of accuracy
+
+## Optimal value of k for the kNN algorithm
+
+In the previous questions, to find the k-nearest neighbor for the test set, we set k = 10. But why 10? Find out the optimal value of `k`.
+
+```{r}
+kNN.plot(formula_churn_short, train = train_set_churn, test = test_set_churn, transform = "minmax", 
+          k.max = 30, set.seed = 5)
+```
+The ideal `k` value seems to be 12 based on the plot.
+
+# Classification for churn dataset (60 points)
+
+We want to apply two classification algorithms (mentioned below) to the [*churn*](https://rdrr.io/cran/liver/man/churn.html) dataset that is available in the **R** package [**liver**](https://CRAN.R-project.org/package=liver). We want to classify whether or not a customer leaving the service of one company in favor of another company. Use the code from the questions in previous sections.
+
+The *churn* dataset has `ncol(churn) - 1` predictors but we are not going to use all of the predictors. We know based on the lecture of week 2, we should use only the predictors that have a relationship with the target variable. So, here we use the following predictors:
+
+`account.length`, `voice.plan`, `voice.messages`, `intl.plan`, `intl.mins`, `day.mins`, `eve.mins`, `night.mins`, and `customer.calls`.
+
+For this classification task, we want to apply the following algorithms:
+
+* *Naive Bayes classifier* algorithm.
+* *kNN* algorithm.
+
+Ultimately, **we want to see which of the above classification algorithms are more suitable here**, by evaluating the accuracy of the predictions with:
+
+* Confusion Matrix,
+* ROC curve,
+* AUC (Area Under the ROC curve).
+
+## Data Preparation
+
+After importing the *churn* dataset in R, partition the *churn* dataset randomly into two groups as a train set (80%) and a test set (20%). Here, for the partition, you could use the `partition()` function from the *liver* package. You should use the `set.seed()` function in R. Similar to Section 1.2.
+
+```{r}
+data(churn)
+
+set.seed(5)
+
+data_sets_churn = partition(data = churn, prob = c(0.8, 0.2))
+
+train_set_churn = data_sets_churn$part1
+test_set_churn  = data_sets_churn$part2
+
+actual_test_churn  = test_set_churn$churn
+```
+
+## Applying naive Bayes classifier
+
+We apply naive Bayes classifier algorithm to the training dataset, similar to part 1.3. Then interpret the output.
+
+```{r}
+formula_churn = churn ~ `account.length` + `voice.plan` + `voice.messages` + `intl.plan` + `intl.mins`+ `day.mins`+ `eve.mins`+ `night.mins`+  `customer.calls`
+
+naive_bayes_churn = naive_bayes(formula_churn, data = train_set_churn)
+
+naive_bayes_churn
+
+```
+
+```{r}
+summary(naive_bayes_churn)
+```
+The Naive Bayes model output for predicting customer churn provides key insights into the relationships between predictors and the target variable (churn). It reveals that approximately 14.39% of customers are classified as "yes" (churn) while 85.61% are "no" (not churn), indicating an imbalanced dataset. The model uses Laplace smoothing set to 0 and includes various predictor variables with conditional probability tables. For Gaussian variables like account length, customers who churn have a longer average account length (101.43) compared to non-churners (99.79), while Bernoulli variables show that only 13.29% of churners have a voice plan, compared to 28.61% of non-churners.
+
+## Applying kNN algorithm
+
+Find the k-nearest neighbor for the test set, based on the training dataset, for the case k = 13. For the kNN algorithm, use min-max normalization to transfer the predictors, similar to the exercises of week 4.
+
+```{r}
+predict_knn_13_churn = kNN(formula_churn, train = train_set_churn, test = test_set_churn, transform = "minmax", k = 13)
+(conf_knn_13_churn = conf.mat(predict_knn_13_churn, actual_test_churn))
+conf.mat.plot(predict_knn_13_churn, actual_test_churn, main = "kNN with k = 13")
+```
+
+## Model Evaluation
+
+Based on your results so far, which one of the above classification algorithms is more suitable here for the *churn* dataset based on:
+
+* Confusion Matrix,
+* ROC curve,
+* AUC (Area Under the ROC curve).
+
+Report the result and interpret them.
+
+```{r}
+prob_naive_bayes_churn = predict(naive_bayes_churn, test_set_churn, type = "prob")
+
+head(prob_naive_bayes_churn)
+```
+```{r}
+prob_naive_bayes_churn = prob_naive_bayes_churn[, 1]
+
+conf.mat(prob_naive_bayes_churn, actual_test_churn, cutoff = 0.5, reference = "yes")
+conf.mat.plot(prob_naive_bayes_churn, actual_test_churn, cutoff = 0.5, reference = "yes")
+```
+
+```{r}
+formula_knn_churn = churn ~ `account.length` + `voice.plan` + `voice.messages` + `intl.plan` + `intl.mins`+ `day.mins`+ `eve.mins`+ `night.mins`+  `customer.calls`
+
+prob_naive_bayes_churn = predict(naive_bayes_churn, test_set_churn, type = "prob")[, 1]
+prob_knn_churn = kNN(formula_knn_churn, train = train_set_churn, test = test_set_churn, transform = "minmax", k = 13, type = "prob")[, 1]
+
+roc_naive_bayes_churn = roc(actual_test_churn, prob_naive_bayes_churn)
+roc_knn_churn = roc(actual_test_churn, prob_knn_churn)
+
+ggroc(list(roc_naive_bayes_churn, roc_knn_churn), size = 0.8) + 
+    theme_minimal() + ggtitle("ROC plots with their AUC values") +
+  scale_color_manual(values = 1:2, 
+    labels = c(paste("Bayes; AUC=", round(auc(roc_naive_bayes_churn), 3)),
+               paste("KNN; AUC=", round(auc(roc_knn_churn), 3)))) +
+  theme(legend.title = element_blank()) +
+  theme(legend.position = c(.7, .3), text = element_text(size = 17))
+```
+The kNN classifier demonstrates better performance compared to the Naive Bayes classifier, as indicated by its higher AUC value of 0.918. This suggests that the kNN model is more effective at distinguishing between churners and non-churners. Also the ROC curve for the kNN algorithm is closer to the top left corner of the plot, which indicates a higher true positive rate (sensitivity) and a lower false positive rate (1-specificity) across various thresholds compared to the Bayes curve. Thus, the kNN classifier is the preferable choice over the Bayes classifier for the churn dataset.
+
+## Churn analysis using generalized regression models
+
+# Generalized Regression Analysis (20 points)
+
+We want to apply generalized regression models to analyze the [*churn*](https://rdrr.io/cran/liver/man/churn.html) dataset that is available in the **R** package [**liver**](https://CRAN.R-project.org/package=liver). We import the *churn* dataset and report the structure of the dataset:
+
+```{r}
+data(churn)
+
+str(churn)
+```
+
+It shows the dataset contains `r nrow(churn)` records and `r ncol(churn)` variables/features. The dataset has `r ncol(churn) - 1` predictors along with a target variable `churn` as a binary variable.
+
+## Logistic Regression 
+
+By using *logistic regression* we want to classify whether or not a customer leaving the service of one company in favor of another company. 
+
+The *churn* dataset has `r ncol(churn) - 1` predictors but we are not going to use all of the predictors. We know based on the lecture of week 2, we should use only the predictors that have a relationship with the target variable. So, here we use the following predictors:
+
+`account.length`, `voice.plan`, `voice.messages`, `intl.plan`, `intl.mins`, `day.mins`, `eve.mins`, `night.mins`, and `customer.calls`.
+
+We use the following *formula* to list response (`churn`) the above predictors:
+```{r}
+formula = churn ~ account.length + voice.messages + day.mins + eve.mins + 
+                  night.mins + intl.mins + customer.calls + intl.plan + voice.plan
+```
+
+To run the logistic regression model, we will use the `glm()` command:
+```{r}
+logreg_1 = glm(formula, data = churn, family = binomial)
+```
+
+The `formula` input response (`churn`) the above predictors, and the `data = churn` input specifies the dataset, and `family = binomial` specifies a logistic regression model. Save the model output as `logreg_1`.
+
+To view the summary of the model, run the `summary()` command with the name of the saved model as the sole input. 
+```{r}
+summary(logreg_1)
+```
+
+**Based on the above output, which of the predictors should we remove from our model? Support you claim. Support your claim.** <br>
+In a logistic regression model, predictors with high p-values are not statistically significant and may not contribute meaningfully to the model. Based on the output we should remove `account.length` with a p-value = 0.2279. This predictor has a p-value above 0.05, suggesting it is not statistically significant and can be considered for removal.
+
+## Poisson Regression 
+
+Poisson regression is used when we want to predict a count of events, such as how many times a customer will contact customer service. The distribution of the response variable will be a count of occurrences, with a minimum value of zero.
+
+Here we want to use the *churn* dataset to build that estimate the number of customer service calls based on the following predictors:
+
+`churn`, `account.length`, `voice.plan`, `voice.messages`, `intl.plan`, `intl.mins`, `day.mins`, `eve.mins`, and `night.mins`.
+
+We use the following *formula* to list response (`customer.calls`) the above predictors:
+```{r}
+formula = customer.calls ~ churn + voice.messages + day.mins + eve.mins + 
+                           night.mins + intl.mins + intl.plan + voice.plan
+```
+Not that the above `formula` specifies `customer.calls` as the response variable and the above variables as the predictor variables.
+
+Our variable is an integer-valued variable, which is why we use *Poisson regression* instead of linear regression for this estimation. We use the `glm()` command, which we used in the previous section to build a logistic regression model, to now build a *Poisson regression* model:
+```{r}
+reg_pois = glm(formula, data = churn, family = poisson)
+```
+
+The `formula` input response (`customer.calls`) the above predictors, and the `data = churn` input specifies the dataset, and `family = poisson` specifies a *Poisson regression* model. Save the model output as `reg_pois`.
+
+To view the summary of the model, run the `summary()` command with the name of the saved model as the sole input. 
+```{r}
+summary(reg_pois)
+```
+
+**Based on the above output, which of the predictors should we remove from our model? Support you claim. Support your claim.** 
+We should *remove* the following variables:
+- `voice.messages`: p-value = 0.228646 
+- `night.mins`: p-value = 0.108704
+- `intl.mins`: p-value = 0.066475
+- `voice.planno`: p-value = 0.402284
+By removing the relatively insignificant predictors, we can simplify the model without losing important predictive power.
+
+
+
+# Classification for churn dataset
+
+We want to classify whether or not a customer leaving the service of one company in favor of another company. 
+
+The *churn* dataset has 19 predictors but we are not going to use all of the predictors. We know based on the lecture of week 2, we should use only the predictors that have a relationship with the target variable. So, here we use the following predictors:
+
+`account.length`, `voice.plan`, `voice.messages`, `intl.plan`, `intl.mins`, `day.mins`, `eve.mins`, `night.mins`, and `customer.calls`.
+
+For this classification task, we want to apply the following algorithms and compare their performance:
+
+* *kNN* algorithm
+* *Logistic Regression* algorithm
+* *Naive Bayes classifier* algorithm
+
+## Data Preparation for classification
+
+Partition the *churn* dataset randomly into two groups as a train set (80%) and a test set (20%). 
+```{r}
+data(churn)
+
+set.seed(123)
+
+data_sets <- partition(data = churn, prob = c(0.80, 0.20))
+
+train_set = data_sets$part1
+test_set  = data_sets$part2
+
+actual_test  = test_set$churn
+
+str(train_set)
+```
+
+
+```{r}
+formula = churn ~ account.length + voice.messages + day.mins + eve.mins + 
+                  night.mins + intl.mins + customer.calls + intl.plan + voice.plan
+```
+
+## Applying kNN algorithm
+
+Find the k-nearest neighbor for the test set, based on the training dataset, for the case k = 13. For the kNN algorithm, use min-max normalization to transfer the predictors, similar to the exercises of week 4.
+
+```{r}
+# k-Nearest Neighbors model with k = 13
+predict_knn_13_churn <- kNN(formula, train = train_set, test = test_set, transform = "minmax", k = 13)
+
+# Confusion Matrix for kNN
+knn_cm <- table(Predicted = predict_knn_13_churn, Actual = actual_test)
+print(knn_cm)
+
+# MSE for kNN
+knn_mse <- mean((as.numeric(predict_knn_13_churn) - 1 - actual_test)^2)
+print(paste("kNN MSE:", knn_mse))
+
+# ROC and AUC for kNN
+knn_roc <- roc(actual_test, as.numeric(predict_knn_13_churn) - 1)
+knn_auc <- auc(knn_roc)
+print(paste("kNN AUC:", knn_auc))
+```
+The confusion matrix gave the following results:
+- True Negatives (TN): 831
+- False Positives (FP): 20
+- False Negatives (FN): 81
+- True Positives (TP): 14
+The MSE value is 3.8488, which is slightly lower than the Naive Bayes model and comparable to the logistic regression model. A lower MSE indicates better predictive performance, but the improvement here is minimal. The AUC value is 0.5619, which is quite low. An AUC close to 0.5 suggests that the model is barely better than random guessing. This low AUC value indicates that the kNN model struggles to distinguish between the two classes (churn and no churn) effectively, making it the least effective model compared to logistic regression and Naive Bayes.
+
+
+## Applying Logistic Regression algorithm
+
+By using logistic regression, we want to classify whether or not a customer leaving the service of one company in favor of another company.
+
+```{r}
+# Logistic Regression model
+logreg_1 = glm(formula, data = train_set, family = binomial)
+summary(logreg_1)
+
+# Predictions for the test set
+logreg_pred_probs <- predict(logreg_1, test_set, type = "response")
+logreg_pred_class <- ifelse(logreg_pred_probs > 0.5, 1, 0)
+
+# Confusion Matrix for Logistic Regression
+logreg_cm <- table(Predicted = logreg_pred_class, Actual = actual_test)
+print(logreg_cm)
+
+# MSE for Logistic Regression
+logreg_mse <- mean((logreg_pred_class - actual_test)^2)
+print(paste("Logistic Regression MSE:", logreg_mse))
+
+# ROC and AUC for Logistic Regression
+logreg_roc <- roc(actual_test, logreg_pred_probs)
+logreg_auc <- auc(logreg_roc)
+print(paste("Logistic Regression AUC:", logreg_auc))
+```
+The confusion matrix gave the following results:
+- True Negatives (TN): 841
+- False Positives (FP): 10 
+- False Negatives (FN): 71 
+- True Positives (TP): 24 
+The MSE value is 3.8277. A lower MSE indicates better predictive performance. The relatively low value suggests the model is doing well.The AUC value is 0.8502, which is a good indicator of the model's performance. 
+
+## Applying naive Bayes classifier
+```{r}
+# Naive Bayes model
+naive_bayes_churn = naive_bayes(formula, data = train_set)
+
+# Predictions for the test set
+nb_pred_class <- predict(naive_bayes_churn, test_set)
+nb_pred_probs <- predict(naive_bayes_churn, test_set, type = "prob")[, 2]
+
+# Confusion Matrix for Naive Bayes
+nb_cm <- table(Predicted = nb_pred_class, Actual = actual_test)
+print(nb_cm)
+
+# MSE for Naive Bayes
+nb_mse <- mean((as.numeric(nb_pred_class) - 1 - actual_test)^2)
+print(paste("Naive Bayes MSE:", nb_mse))
+
+# ROC and AUC for Naive Bayes
+nb_roc <- roc(actual_test, nb_pred_probs)
+nb_auc <- auc(nb_roc)
+print(paste("Naive Bayes AUC:", nb_auc))
+```
+The confusion matrix gave the following results:
+- True Negatives (TN): 803
+- False Positives (FP): 48
+- False Negatives (FN): 55
+- True Positives (TP): 40
+The MSE value is 4.0793. A higher MSE compared to the logistic regression model suggests the Naive Bayes model has slightly worse predictive performance. The AUC value is 0.8267, which is a good indicator of the model's performance. However, it is slightly lower than the AUC of the logistic regression model, indicating that the Naive Bayes model is performing well but not as effectively in distinguishing between the two classes (churn and no churn).
+
+
+### Plotting
+```{r}
+logreg_roc_data <- data.frame(
+  tpr = logreg_roc$sensitivities,
+  fpr = 1 - logreg_roc$specificities,
+  model = "Logistic Regression"
+)
+
+nb_roc_data <- data.frame(
+  tpr = nb_roc$sensitivities,
+  fpr = 1 - nb_roc$specificities,
+  model = "Naive Bayes"
+)
+
+knn_roc_data <- data.frame(
+  tpr = knn_roc$sensitivities,
+  fpr = 1 - knn_roc$specificities,
+  model = "kNN"
+)
+
+# Combine the ROC data into a single dataframe
+roc_data <- rbind(logreg_roc_data, nb_roc_data, knn_roc_data)
+
+# Plot the ROC curves for all models
+ggplot(roc_data, aes(x = fpr, y = tpr, color = model)) +
+  geom_line() +
+  geom_abline(linetype = "dashed") +
+  labs(x = "False Positive Rate", y = "True Positive Rate", title = "ROC Curves for Logistic, Naive Bayes, and kNN") +
+  theme_minimal() +
+  annotate("text", x = 0.6, y = 0.2, label = paste("Logistic AUC =", round(logreg_auc, 2)), color = "green", size = 4) +
+  annotate("text", x = 0.6, y = 0.1, label = paste("Naive Bayes AUC =", round(nb_auc, 2)), color = "blue", size = 4) +
+  annotate("text", x = 0.6, y = 0.05, label = paste("kNN AUC =", round(knn_auc, 2)), color = "red", size = 4)
+```
+In conclusion the Logistic regression model performs the best. 
+
+

@@ -1,0 +1,623 @@
+---
+title: "bank"
+output: html_document
+date: "2025-02-05"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Exploratory Data Analysis for bank dataset  (70 points)
+
+In this part, we want to use Exploratory Data Analysis to explore the *bank* dataset that is available in the **R** package [**liver**](https://CRAN.R-project.org/package=liver). You could find more information about the *bank* dataset at the following link on pages 4-5: [manual of the liver package](https://cran.r-project.org/web/packages/liver/liver.pdf); Or  [here](https://rdrr.io/cran/liver/man/bank.html).
+
+## Business Understanding
+
+*bank*: which is related to direct marketing campaigns of a Portuguese banking institution. You can find the description on the dataset [here](https://rdrr.io/cran/liver/man/bank.html).
+
+Find the best strategies to improve for the next marketing campaign. How can the financial institution have greater effectiveness for future marketing campaigns? To make a data-driven decision, we need to analyze the last marketing campaign the bank performed and identify the patterns that will help us find conclusions to develop future strategies.
+
+### Bank direct marketing info
+
+Two main approaches for enterprises to promote products/services are: 
+
+* *mass campaigns*: targeting general indiscriminate public,
+* *directed marketing*, targeting a specific set of contacts. 
+
+In general, positive responses to mass campaigns are typically very low (less than 1%). On the other hand, direct marketing focuses on targets that are keener to that specific product/service, making this kind of campaign more effective. However, direct marketing has some drawbacks, for instance, it may trigger a negative attitude towards banks due to the intrusion of privacy.
+
+Banks are interested to increase financial assets. One strategy is to offer attractive long-term deposit applications with good interest rates, in particular, by using directed marketing campaigns. Also, the same drivers are pressing for a reduction in costs and time. Thus, there is a need for an improvement in efficiency: lesser contacts should be done, but an approximate number of successes (clients subscribing to the deposit) should be kept.
+
+### What is a Term Deposit?
+
+A Term Deposit is a deposit that a bank or a financial institution offers with a fixed rate (often better than just opening a deposit account), in which your money will be returned at a specific maturity time. For more information with regards to Term Deposits please check [here](https://www.investopedia.com/terms/t/termdeposit.asp).
+
+## Data Undestanding
+
+The *bank* dataset is related to direct marketing campaigns of a Portuguese banking institution. You can find more information related to this dataset at: [https://rdrr.io/cran/liver/man/bank.html](https://rdrr.io/cran/liver/man/bank.html)
+
+The marketing campaigns were based on phone calls. Often, more than one contact (to the same client) was required, to access if the product (bank term deposit) would be (or not) subscribed. The classification goal is to predict if the client will subscribe to a term deposit (variable deposit).
+
+We import the *bank* dataset:
+```{r}
+data(bank)      
+```
+
+We can see the structure of the dataset by using the `str` function:
+```{r}
+str(bank)
+```
+
+It shows that the *bank* dataset as a `data.frame` has `r ncol(bank)` variables and `r nrow(bank)` observations. The dataset has `r ncol(bank) - 1` predictors along with the target variable `deposit` which is a binary variable with 2 levels "yes" and "no". The variables in this dataset are:
+
+* `age`: numeric.
+* `job`: type of job; categorical: "admin.", "unknown", "unemployed", "management", "housemaid", "entrepreneur", "student", "blue-collar, "self-employed", "retired", "technician", "services".
+* `marital`: marital status; categorical: "married", "divorced", "single"; note: "divorced" means divorced or widowed.
+* `education`: categorical: "secondary", "primary", "tertiary", "unknown".
+* `default`: has credit in default?; binary: "yes","no".
+* `balance`: average yearly balance, in euros; numeric.
+* `housing`: has housing loan? binary: "yes", "no".
+* `loan`: has personal loan? binary: "yes", "no".
+
+Related with the last contact of the current campaign:
+
+* `contact`: contact: contact communication type; categorical: "unknown","telephone","cellular". 
+* `day`: last contact day of the month; numeric.
+* `month`: last contact month of year; categorical: "jan", "feb", "mar", ..., "nov", "dec".
+* `duration`: last contact duration, in seconds; numeric.
+
+Other attributes:
+
+* `campaign`: number of contacts performed during this campaign and for this client; numeric, includes last contact.
+* `pdays`: number of days that passed by after the client was last contacted from a previous campaign; numeric, -1 means client was not previously contacted.
+* `previous`: number of contacts performed before this campaign and for this client; numeric.
+* `poutcome`: outcome of the previous marketing campaign; categorical: "success", "failure", "unknown", "other".
+
+Target variable:
+
+* `deposit`: Indicator of whether the client subscribed a term deposit; binary: "yes" or "no".
+
+**Following Part 1, apply the Exploratory Data Analysis to the *bank* dataset.**
+```{r}
+#Checking for the type of the variables
+column_classes_bank <- lapply(bank, class)
+classify_variable_bank <- function(class) {
+  if (class %in% c("factor", "character")) {
+    return("categorical")
+  } else if (class == "integer") {
+    return("discrete")
+  } else if (class %in% c("numeric", "double")) {
+    return("continuous")
+  } else {
+    return("other")
+  }
+}
+
+variable_types <- sapply(column_classes_bank, function(cls) classify_variable_bank(cls[[1]]))
+variable_types
+```
+## 2.3 Investigate the target variable *deposit* 
+**Bar plot for the target variable *deposit* by using function ggplot()**
+```{r}
+ggplot(data = bank) + 
+    geom_bar(aes(x = deposit), fill = c("red", "blue")) +
+    labs(title = "Bar plot for the target variable 'deposit'")  
+```
+**Summary for the target variable *deposit* **
+```{r}
+summary(bank$deposit)
+```
+
+## 2.4 Invetigating the relationship between categorical predictors and *deposit* 
+
+**2.4.1: Job vs Deposit**
+```{r}
+table(bank$deposit, bank$job, dnn = c("Deposit", "Job"))
+
+ggplot(bank, aes(x = job, fill = deposit)) +
+  geom_bar(width = 0.6) +
+  scale_fill_manual(values = c("red", "blue")) +
+  labs(title = "Number of Deposit Subscriptions by Job") +
+  coord_cartesian(expand = TRUE) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+ggplot(bank, aes(x = job, fill = deposit)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = c("red", "blue")) +
+  labs(title = "Proportion of Deposit Subscriptions by Job") +
+  coord_cartesian(expand = TRUE) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+**2.4.2:Marital status vs Deposit**
+```{r}
+table(bank$deposit, bank$marital, dnn = c("Deposit", "Marital status"))
+
+ggplot(bank, aes(x = marital, fill = deposit)) +
+  geom_bar(width = 0.6) +
+  scale_fill_manual(values = c("red", "blue")) +
+  labs(title = "Number of Deposit Subscriptions by Marital Status") +
+  coord_cartesian(expand = TRUE) 
+
+ggplot(bank, aes(x = marital, fill = deposit)) +
+  geom_bar(width = 0.6, position = "fill") +
+  scale_fill_manual(values = c("red", "blue")) +
+  labs(title = "Proportion of Deposit Subscriptions by Marital Status") +
+  coord_cartesian(expand = TRUE) 
+```
+
+**2.4.3:Education vs Deposit**
+```{r}
+table(bank$deposit, bank$education, dnn = c("Deposit", "Education"))
+
+ggplot(bank, aes(x = education, fill = deposit)) +
+  geom_bar(width = 0.6) +
+  scale_fill_manual(values = c("red", "blue")) +
+  labs(title = "Number of Deposit Subscriptions by Education") +
+  coord_cartesian(expand = TRUE) 
+
+ggplot(bank, aes(x = education, fill = deposit)) +
+  geom_bar(width = 0.6, position = "fill") +
+  scale_fill_manual(values = c("red", "blue")) +
+  labs(title = "Proportion of Deposit Subscriptions by Education") +
+  coord_cartesian(expand = TRUE) 
+```
+
+**2.4.4: Default vs Deposit**
+```{r}
+table(bank$deposit, bank$default, dnn = c("Deposit", "Default"))
+
+ggplot(bank, aes(x = default, fill = deposit)) +
+  geom_bar(width = 0.6) +
+  scale_fill_manual(values = c("red", "blue")) +
+  labs(title = "Number of Deposit Subscriptions by Credit Default") +
+  coord_cartesian(expand = TRUE) 
+
+ggplot(bank, aes(x = default, fill = deposit)) +
+  geom_bar(width = 0.6, position = "fill") +
+  scale_fill_manual(values = c("red", "blue")) +
+  labs(title = "Proportion of Deposit Subscriptions by Credit Default") +
+  coord_cartesian(expand = TRUE)
+```
+
+**2.4.5: Housing loan vs Deposit**
+```{r}
+table(bank$deposit, bank$housing, dnn = c("Deposit", "Housing loan"))
+
+ggplot(bank, aes(x = housing, fill = deposit)) +
+  geom_bar(width = 0.6) +
+  scale_fill_manual(values = c("red", "blue")) +
+  labs(title = "Number of Deposit Subscriptions by Housing Loan") +
+  coord_cartesian(expand = TRUE) 
+
+ggplot(bank, aes(x = housing, fill = deposit)) +
+  geom_bar(width = 0.6, position = "fill") +
+  scale_fill_manual(values = c("red", "blue")) +
+  labs(title = "Proportion of Deposit Subscriptions by Housing Loan") +
+  coord_cartesian(expand = TRUE) 
+```
+
+**2.4.6: Personal loan vs Deposit**
+```{r}
+table(bank$deposit, bank$loan, dnn = c("Deposit", "Personal loan"))
+
+ggplot(bank, aes(x = loan, fill = deposit)) +
+  geom_bar(width = 0.6) +
+  scale_fill_manual(values = c("red", "blue")) +
+  labs(title = "Number of Deposit Subscriptions by Personal Loan") +
+  coord_cartesian(expand = TRUE) 
+
+ggplot(bank, aes(x = loan, fill = deposit)) +
+  geom_bar(width =0.6, position = "fill") +
+  scale_fill_manual(values = c("red", "blue")) +
+  labs(title = "Proportion of Deposit Subscriptions by Personal Loan") +
+  coord_cartesian(expand = TRUE) 
+```
+
+**2.4.7: Contact communication type vs Deposit**
+```{r}
+table(bank$deposit, bank$contact, dnn = c("Deposit", "Contact communication type"))
+
+ggplot(bank, aes(x = contact, fill = deposit)) +
+  geom_bar(width = 0.6) +
+  scale_fill_manual(values = c("red", "blue")) +
+  labs(title = "Number of Deposit Subscriptions by Contact Communication Type") +
+  coord_cartesian(expand = TRUE) 
+
+ggplot(bank, aes(x = contact, fill = deposit)) +
+  geom_bar(width = 0.6, position = "fill") +
+  scale_fill_manual(values = c("red", "blue")) +
+  labs(title = "Proportion of Deposit Subscriptions by Contact Communication Type") +
+  coord_cartesian(expand = TRUE) 
+```
+
+**2.4.8: Month vs Deposit**
+```{r}
+table(bank$deposit, bank$month, dnn = c("Deposit", "Job"))
+
+ggplot(bank, aes(x = month, fill = deposit)) +
+  geom_bar(width = 0.6) +
+  scale_fill_manual(values = c("red", "blue")) +
+  labs(title = "Number of Deposit Subscriptions by Month") +
+  coord_cartesian(expand = TRUE) 
+
+ggplot(bank, aes(x = month, fill = deposit)) +
+  geom_bar(width = 0.6, position = "fill") +
+  scale_fill_manual(values = c("red", "blue")) +
+  labs(title = "Proportion of Deposit Subscriptions by Month") +
+  coord_cartesian(expand = TRUE)  
+```
+
+**2.4.9: Previous campaign outcome vs Deposit**
+```{r}
+table(bank$deposit, bank$campaign, dnn = c("Deposit", "Previous campaign outcome"))
+
+ggplot(bank, aes(x = poutcome, fill = deposit)) +
+  geom_bar(width = 0.6) +
+  scale_fill_manual(values = c("red", "blue")) +
+  labs(title = "Number of Deposit Subscriptions by Previous Campaign Outcome") +
+  coord_cartesian(expand = TRUE) 
+
+ggplot(bank, aes(x = poutcome, fill = deposit)) +
+  geom_bar(width = 0.6, position = "fill") +
+  scale_fill_manual(values = c("red", "blue")) +
+  labs(title = "Proportion of Deposit Subscriptions by Previous Campaign Outcome") +
+  coord_cartesian(expand = TRUE)  
+```
+
+## 2.5  Invetigating the relationship between numerical predictors and *deposit* 
+
+**2.5.1: Age vs Deposit**
+```{r}
+ggplot(bank, aes(x = age, color = deposit)) +
+  geom_density() +
+  labs(title = "Density Plot of Age by Deposit Status")
+```
+
+**2.5.2: Balance vs Deposit**
+```{r}
+ggplot(bank, aes(x = balance, color = deposit)) +
+  geom_density() +
+  labs(title = "Density Plot of Balance by Deposit Status")
+```
+
+**2.5.3: Contract duration vs Deposit**
+```{r}
+ggplot(bank) +
+  geom_boxplot(aes(x = deposit, y = duration, fill = deposit)) 
+
+ggplot(bank, aes(x = duration, color = deposit)) +
+  geom_density(aes(fill = deposit, alpha = 0.1)) +
+  labs(title = "Density Plot of Contract duration by Deposit Status")
+```
+
+**2.5.4: Campaign vs Deposit**
+```{r}
+ggplot(bank, aes(x = campaign, color = deposit)) +
+  geom_density(aes(fill = deposit, alpha = 0.1)) +
+  labs(title = "Density Plot of Campaign by Deposit Status")
+```
+
+**2.5.5: Pdays vs Deposit**
+```{r}
+ggplot(bank, aes(x = pdays, color = deposit)) +
+  geom_density() +
+  labs(title = "Density Plot of Pdays by Deposit Status")
+```
+
+**2.5.6: Previous contacts vs Deposit**
+```{r}
+ggplot(bank, aes(x = previous, color = deposit)) +
+  geom_density() +
+  labs(title = "Density Plot of Previous Contacts by Deposit Status")
+```
+
+## 2.6 Correlation of numeric variables 
+```{r}
+# Correlation matrix for numeric variables
+numeric_vars <- bank[, sapply(bank, is.integer)]
+correlation_matrix <- cor(numeric_vars)
+ggcorrplot(correlation_matrix, type = "lower", lab = TRUE, lab_size = 3) 
+```
+
+## Chi-Square Test
+
+In the *bank* dataset, test whether there is a relationship between the target variable “`deposit`” and the variable “`education`” with $\alpha=0.05$.
+
+Null and Alternative Hypotheses:
+
+ \[
+  H_0: \text{"deposit" and "education" are independent}
+  \]
+   \[
+  H_1: \text{"deposit" and "education" are not independent}
+  \]
+
+```{r}
+contingency_table <- table(bank$deposit, bank$education)
+chi_squared_result <- chisq.test(contingency_table)
+chi_squared_result
+```
+
+p-value: `r round(chi_squared_result$p.value, 4)` </br>
+
+Since the p-value is `r round(chi_squared_result$p.value, 4)`, which is less than the significance level of α=0.05, we reject the null hypothesis.</br>
+
+This indicates that there is a significant relationship between the "deposit" and "education" variables, which could suggests that the level of education may influence customers' decisions to make a deposit informing targeted marketing strategies and customer engagement efforts.
+
+## Data Preparation
+
+We partition the *bank* dataset randomly into two groups: train set (80%) and test set (20%). Here, we use the `partition()` function from the *liver* package:
+
+```{r}
+set.seed(5)
+
+data_sets = partition(data = bank, prob = c(0.8, 0.2))
+
+train_set = data_sets$part1
+test_set  = data_sets$part2
+
+actual_test  = test_set$deposit
+```
+
+Note that here we are using the `set.seed()` function to create reproducible results. 
+
+We want to validate the partition by testing whether the proportion of the target variable `deposit` differs between the two data sets. We use a Two-Sample Z-Test for the difference in proportions. To run the test, we use the `prop.test()` function in **R**:
+```{r}
+x1 = sum(train_set$deposit == "yes")
+x2 = sum(test_set $deposit == "yes")
+
+n1 = nrow(train_set)
+n2 = nrow(test_set)
+
+prop.test(x = c(x1, x2), n = c(n1, n2))
+```
+
+Based on the output, answer the following questions:
+
+a. **Why is the above hypothesis test suitable for the above research question? Provide your reasons.**
+<br>
+The Two-Sample Z-Test for proportions is a suitable hypothesis test because we want to compare the proportion of clients subscribing to a term deposit (the "yes" value) between the two datasets (train and test sets). This test helps determine if there is a statistically significant difference between the proportions of two independent groups. Since the data is categorical (binary outcome: "yes" or "no"), a proportion test is appropriate.
+
+b. **Specify the null and alternative hypotheses?** <br>
+**Null Hypothesis (H₀)**: The proportion of customers who subscribe to a term deposit is the same in both the train and test datasets.<br>
+  \[
+  H_0: \pi_1 = \pi_2
+  \]
+  
+- **Alternative Hypothesis (H₁)**: The proportion of customers who subscribe to a term deposit is different between the train and test datasets. <br>
+  \[
+  H_1: \pi_1 \neq \pi_2
+  \]
+Where \(\pi_1\) is the proportion of customers subscribing in the training set, and \(\pi_2\) is the proportion of customers subscribing in the test set.
+
+c. **Explain that you reject or do not reject the null hypothesis, at $\alpha=0.05$. What would be your statistical conclusion?** <br>
+Given the **p-value = 0.1217**, which is **greater** than the significance level **𝛼 = 0.05**, we **fail to reject the null hypothesis**.
+
+d. **What would be a non-statistical interpretation of your findings in c?**
+In practical terms, this means that the way we partitioned the data between training and testing groups resulted in similar proportions of customers subscribing to term deposits. Therefore, the partition is likely to represent the overall dataset well, and the training and test sets are comparable in terms of the key target variable (term deposit subscriptions). This is important for ensuring that the model is trained on data representative of what it will encounter during testing.
+
+## Data Preparation
+
+We partition the *bank* dataset randomly into two groups: train set (80%) and test set (20%). Here, we use the `partition()` function from the *liver* package:
+
+```{r}
+set.seed(5)
+
+data_sets = partition(data = bank, prob = c(0.8, 0.2))
+
+train_set = data_sets$part1
+test_set  = data_sets$part2
+
+actual_test  = test_set$deposit
+```
+
+Note that here we are using the `set.seed()` function to create reproducible results. 
+
+We want to validate the partition by testing whether the proportion of the target variable `deposit` differs between the two data sets. We use a Two-Sample Z-Test for the difference in proportions. To run the test, we use the `prop.test()` function in **R**:
+```{r}
+x1 = sum(train_set$deposit == "yes")
+x2 = sum(test_set $deposit == "yes")
+
+n1 = nrow(train_set)
+n2 = nrow(test_set)
+
+prop.test(x = c(x1, x2), n = c(n1, n2))
+```
+
+Based on the output, answer the following questions:
+
+a. **Why is the above hypothesis test suitable for the above research question? Provide your reasons.**
+<br>
+The Two-Sample Z-Test for proportions is a suitable hypothesis test because we want to compare the proportion of clients subscribing to a term deposit (the "yes" value) between the two datasets (train and test sets). This test helps determine if there is a statistically significant difference between the proportions of two independent groups. Since the data is categorical (binary outcome: "yes" or "no"), a proportion test is appropriate.
+
+b. **Specify the null and alternative hypotheses?** <br>
+**Null Hypothesis (H₀)**: The proportion of customers who subscribe to a term deposit is the same in both the train and test datasets.<br>
+  \[
+  H_0: \pi_1 = \pi_2
+  \]
+  
+- **Alternative Hypothesis (H₁)**: The proportion of customers who subscribe to a term deposit is different between the train and test datasets. <br>
+  \[
+  H_1: \pi_1 \neq \pi_2
+  \]
+Where \(\pi_1\) is the proportion of customers subscribing in the training set, and \(\pi_2\) is the proportion of customers subscribing in the test set.
+
+c. **Explain that you reject or do not reject the null hypothesis, at $\alpha=0.05$. What would be your statistical conclusion?** <br>
+Given the **p-value = 0.1217**, which is **greater** than the significance level **𝛼 = 0.05**, we **fail to reject the null hypothesis**.
+
+d. **What would be a non-statistical interpretation of your findings in c?**
+In practical terms, this means that the way we partitioned the data between training and testing groups resulted in similar proportions of customers subscribing to term deposits. Therefore, the partition is likely to represent the overall dataset well, and the training and test sets are comparable in terms of the key target variable (term deposit subscriptions). This is important for ensuring that the model is trained on data representative of what it will encounter during testing.
+
+## Classification using the kNN algorithm
+
+The results from the "Exploratory Data Analysis (EDA)" (from last week) indicate that the following predictors from `r ncol(bank) - 1` predictors in the *bank* dataset are important to predict `deposit`.
+
+`age`, `default`, `balance`, `housing`, `loan`, `duration`, `campaign`, `pdays`, and `previous`.
+
+Thus, here, based on the training dataset, we want to apply kNN algorithm, by using above predictors in our model. We use the following formula:
+```{r}
+formula = deposit ~ age + default + balance + housing + loan + duration + campaign + pdays + previous
+```
+
+**NOTE:** The above formula means `deposit` is the target variable and the rest of the variables in the right side of tilde ("`~`") are independent variables. 
+
+Based on the training dataset, we want to find the k-nearest neighbor for the test data set. Here we use two different values for k (k = 3 and k = 10). We use the `kNN()` function from the *R* package **liver**:
+```{r}
+predict_knn_3  = kNN(formula, train = train_set, test = test_set, k = 3)
+
+predict_knn_10 = kNN(formula, train = train_set, test = test_set, k = 10)
+```
+
+To have an overview of the prediction result, we report *Confusion Matrix* for two different values of k by using the `conf.mat` function: 
+```{r}
+(conf_knn_3 = conf.mat(predict_knn_3, actual_test))
+
+(conf_knn_10 = conf.mat(predict_knn_10, actual_test))
+```
+
+We also could report *Confusion Matrix* by using the `conf.mat.plot()` command:
+```{r fig.show = "hold", out.width = "50%", fig.align = 'default'}
+conf.mat.plot(predict_knn_3, actual_test, main = "kNN with k = 3")
+
+conf.mat.plot(predict_knn_10, actual_test, main = "kNN with k = 10")
+```
+
+**What do these values mean? Explain what conclusion you will draw.**
+In the first *Confusion Matrix*, we set the *k=3*. The model correctly predicted 806 customers who did not subscribe to the deposit (true negative). The model incorrectly predicted 45 customers would subscribe when they did not (false positive). The model incorrectly predicted 76 customers would not subscribe when they actually did (false negative). Finally, the model correctly predicted 19 customers would subscribe to the deposit (true positive).<br>
+<br>
+In the second *Confusion Matrix*, we set the *k=10*. The model correctly predicted 834 customers who did not subscribe to the deposit (true negative). The model incorrectly predicted 17 customers would subscribe when they did not (false positive). The model incorrectly predicted 74 customers would not subscribe when they actually did (false negative). Finally, the model correctly predicted 21 customers would subscribe to the deposit (true positive).<br>
+<br>
+Based on these findings we can calculate the accuracy of the model with different values for k. 
+```{r}
+# Calculate accuracy for k = 3
+accuracy_knn_3 <- mean(predict_knn_3 == actual_test)
+print(accuracy_knn_3)
+```
+
+```{r}
+# Calculate accuracy for k = 10
+accuracy_knn_10 <- mean(predict_knn_10 == actual_test)
+print(accuracy_knn_10)
+```
+Thus, increasing k from 3 to 10 leads to better accuracy, suggesting that using 10 neighbors is more effective for this dataset.
+
+## Model evaluation by MSE
+
+To evaluate the accuracy of the predictions, we calculate the Mean Square Error (MSE) by using the `mse()` function from the **liver** package:
+
+```{r}
+MSE_3 = mse(predict_knn_3, actual_test)
+MSE_3 
+
+MSE_10 = mse(predict_knn_10, actual_test)
+MSE_10
+```
+
+**For the case k=3, the MSE = `r round(MSE_3 , 3)` and for the case k = 10, the MSE = `r round(MSE_10, 3)`. What do these values mean? Explain what conclusion you will draw.**
+The MSE provides a way to measure how far the predicted values are from the actual values. A lower MSE indicates better performance, meaning the predictions are closer to the actual outcomes. Since the MSE for k=10 (`r round(MSE_10 , 3)`) is lower than for k=3 (`r round(MSE_3 , 3)`), we can conclude that the model with k=10 performs better in predicting whether a client will subscribe to a term deposit (the target variable). 
+
+## Visualizing Model Performance by ROC curve
+
+To report the ROC curve, we need the probability of our classification prediction. We can have it by using:
+```{r}
+prob_knn_3  = kNN(formula, train = train_set, test = test_set, k = 3 , type = "prob")[, 1]
+
+prob_knn_10 = kNN(formula, train = train_set, test = test_set, k = 10, type = "prob")[, 1]
+```
+
+To visualize the model performance, we could report the ROC curve plot by using the `plot.roc()` function from the **pROC** package:
+
+```{r}
+roc_knn_3 = roc(actual_test, prob_knn_3)
+
+roc_knn_10 = roc(actual_test, prob_knn_10)
+
+ggroc(list(roc_knn_3, roc_knn_10), size = 0.8) + 
+    theme_minimal() + ggtitle("ROC plots with AUC for kNN") +
+    scale_color_manual(values = c("red", "blue"), 
+    labels = c(paste("k=3 ; AUC=", round(auc(roc_knn_3), 3)),
+                paste("k=10; AUC=", round(auc(roc_knn_10), 3))
+             )) +
+    theme(legend.title = element_blank()) +
+    theme(legend.position = c(.7, .3), text = element_text(size = 17))
+```
+
+
+In the above plot, '<span style="color:red">red</span>' curve is for the case k = 3 and the '<span style="color:blue">blue</span>' curve is for the case k = 10.
+
+**Explain what conclusion you will draw. Do we need to report AUC (Area Under the Curve) as well?**
+The ROC curve shows the performance of two k-nearest neighbor (kNN) models for predicting the target variable 'deposit'. However, we should also report the AUC in order to provide a single metric to evaluate the performance of the models. 
+
+*AUC*
+```{r}
+# Get the AUC for k = 3
+auc_knn_3 = auc(roc_knn_3)
+print(paste("AUC for k=3:", round(auc_knn_3, 3)))
+```
+
+```{r}
+# Get the AUC for k = 10
+auc_knn_10 = auc(roc_knn_10)
+print(paste("AUC for k=10:", round(auc_knn_10, 3)))
+```
+Based on the AUC values, the Red Curve (k = 3, `r auc_knn_3`) indicates a moderate performance. This model is better than random guessing (AUC = 0.5), but it is not highly accurate in distinguishing between depositors and non-depositors. <br>
+The Blue Curve (k = 10, `r auc_knn_10``) is higher at 0.797, which suggests that this model performs better than the model with k=3. It has a higher capability of correctly predicting the target class compared to the smaller k value, making it a preferable choice between the two models. 
+
+## kNN algorithm with data transformation
+
+The predictors that we used in the previous question, do not have the same scale. For example, variable `duration` change between `r min(bank$duration)` and `r max(bank$duration)`, whereas the variable `loan` is binary. In this case, the values of variable `duration` will overwhelm the contribution of the variable `loan`. To avoid this situation we use normalization. So, we use min-max normalization and transfer the predictors. 
+
+Now, we find the k-nearest neighbor for the test set, based on the training dataset, for the k = 10:
+
+```{r}
+predict_knn_10_trans = kNN(formula, train = train_set, test = test_set, transform = "minmax", k = 10)
+
+conf.mat.plot(predict_knn_10_trans, actual_test)
+```
+
+## ROC curve and AUC for transformed data
+
+To report the ROC curve, we need the probability of our classification prediction. We can have it by using:
+```{r}
+prob_knn_10 = kNN(formula, train = train_set, test = test_set, k = 10, type = "prob")[, 1]
+
+prob_knn_10_trans = kNN(formula, train = train_set, test = test_set, transform = "minmax", k = 10, type = "prob")[, 1]
+```
+
+To visualize the model performance between the raw data and the transformed data, we could report the ROC curve plot as well as AUC (Area Under the Curve) by using the `plot.roc()` function from the **pROC** package:
+
+```{r}
+roc_knn_10 = roc(actual_test, prob_knn_10)
+
+roc_knn_10_trans = roc(actual_test, prob_knn_10_trans)
+
+ggroc(list(roc_knn_10, roc_knn_10_trans), size = 0.8) + 
+    theme_minimal() + ggtitle("ROC plots with AUC for kNN") +
+    scale_color_manual(values = c("red", "blue"), 
+      labels = c(paste("Raw data             ; AUC=", round(auc(roc_knn_10), 3)), 
+                  paste("Transformed data; AUC=", round(auc(roc_knn_10_trans), 3)))) +
+  theme(legend.title = element_blank()) +
+  theme(legend.position = c(.7, .3), text = element_text(size = 17))
+```
+
+In the above plot black curve is for the *raw* dataset and the red curve is for the *transformed* dataset.
+
+**Explain what conclusion you will draw. Based on the values of AUC (Area Under the Curve), explain what conclusion you will draw.**<br>
+The ROC curve comparison shows that the kNN model with transformed data has a higher AUC (0.814) compared to the model with raw data (AUC = 0.797), indicating improved performance. Normalization helps balance the influence of features with different scales, such as `duration` and `loan`, leading to better classification accuracy. The higher AUC for the transformed data suggests it is better at distinguishing between positive and negative classes, making the transformed data model more effective.
+
+## Optimal value of k for the kNN algorithm
+
+In the previous questions, for finding the k-nearest neighbor for the test set, we set k = 10. But why 10? Here, we want to find out the optimal value of k based on our dataset. 
+
+To find out the optimal value of `k` based on *Error Rate*, for the different values of k from 1 to 30, we run the k-nearest neighbor for the test set and compute the *Error Rate* for these models, by running `kNN.plot()` command 
+
+```{r}
+kNN.plot(formula, train = train_set, test = test_set, transform = "minmax", 
+          k.max = 30, set.seed = 7)
+```
+
+**Based on the plot, what value of k is optimal? Provide your reasons.**
+Based on the plot, a k-value of 8 results in the most accurate predictions for the test set showing the lowest error rate, with fewer misclassifications than other values of k.

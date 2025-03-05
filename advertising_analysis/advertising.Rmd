@@ -1,0 +1,42 @@
+---
+title: "advertising"
+output: html_document
+date: "2025-02-05"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Correlation Test
+
+In the *advertising* dataset, test whether there is a *positive* relationship between the target variable “`approved`” and the variable “`spend`” with $\alpha=0.025$. 
+
+For the correlation test, we use the function `cor.test` as follows
+
+```{r}
+cor_test<- cor.test(x = advertising$spend, 
+          y = advertising$approved, 
+          alternative = "greater", 
+          conf.level = 0.975)
+```
+
+a. **Report the hypotheses $H_0$ and $H_1$. Report the value of *p*-value. Explain you accept or reject the null hypothesis, at $\alpha=0.025$.** </br>
+Null and Alternative Hypotheses: </br>
+
+  \[
+  H_0: \rho \leq 0
+  \]
+
+  \[
+  H_1: \rho > 0
+  \]
+
+p-value: `r cor_test$p.value` </br>
+Correlation Coefficient: `r round(cor_test$estimate, 4)` </br>
+Confidence Interval: `r round(cor_test$conf.int[1], 4)` to `r round(cor_test$conf.int[2], 4)` at the 97.5% confidence level
+
+Since the p-value is significantly less than the significance level of α=0.025, we reject the null hypothesis. This indicates strong evidence of a positive relationship between the variables "spend" and "approved". Therefore, there is a statistically significant positive correlation between how much is spent on advertising and the approval rate.
+
+b. **What conclusions can be drawn regarding "a *positive* relationship between the two variables".** </br>
+A positive relationship between the two variables implies that increasing the advertising spend is associated with higher approval rates, which could inform future marketing strategies.
