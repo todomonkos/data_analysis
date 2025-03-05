@@ -1,0 +1,235 @@
+---
+title: "marketing"
+output: html_document
+date: "2025-02-05"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Linear Regression Analysis (30 points)
+
+We want to apply linear regression models to analyze a dataset which is called *marketing* and it is available in the [**liver**](https://CRAN.R-project.org/package=liver) package. Basically, we want to apply a simple linear regression to look at *what happens to our revenue when we spend more on Pay-per-click (PPC)*. 
+
+## *Marketing* dataset
+
+The *marketing* dataset contains 8 features and 40 records as 40 days that report how much we spent, how many clicks, impressions and transactions we got, whether or not a display campaign was running, as well as our revenue, click-through-rate and conversion rate. The target feature is revenue and the remaining 7 variables are predictors.
+
+The *marketing* dataset, as a data frame, contains 40 records (rows) with 8 variables/features (columns). The variables are:
+
+* `spend`: daily send of money on PPC (apy-per-click).
+* `clicks`: number of clicks on for that ad.
+* `impressions`: amount of impressions per day.
+* `display`: whether or not a display campaign was running.
+* `transactions`: number of transactions per day.
+* `click.rate`:  click-through-rate.
+* `conversion.rate`: conversion rate.
+* `revenue`: daily revenue.
+
+We import the *marketing* dataset and report the structure of the dataset:
+
+```{r}
+data(marketing, package = "liver")
+
+str(marketing)
+```
+
+It shows the dataset contains `r nrow(marketing)` records and `r ncol(marketing)` variables/features. The dataset has `r ncol(marketing) - 1` predictors along with a target variable `revenue` as a numerical-continuous variable.
+
+Below is a simple visualization of all the variables:
+```{r, fig.height = 11, fig.width = 12}
+pairs.panels(marketing)
+```
+
+The above plot presents bi-variate scatter plots (bottom-left), histograms (diagonals), and correlations (upper-right). 
+
+a. **For each variable in the marketing dataset, specify its type.**
+```{r}
+column_classes_marketing <- lapply(marketing, class)
+classify_variable_marketing <- function(class) {
+  if (class %in% c("factor", "character")) {
+    return("categorical")
+  } else if (class == "integer") {
+    return("discrete")
+  } else if (class %in% c("numeric", "double")) {
+    return("continuous")
+  } else {
+    return("other")
+  }
+}
+
+variable_types <- sapply(column_classes_marketing, function(cls) classify_variable_marketing(cls[[1]]))
+variable_types
+```
+
+b. **What is your interpretation of the above plot? Provide your reasons.** <br>
+The pairwise scatter plots, histograms, and correlation coefficients show the relationships between variables. Many variables, like `spend`, `clicks`, and `transactions`, have strong positive relationships, while some show weaker or negative correlations, like `display` and `impressions`. Some of the histograms, for example, the `spend`, `clicks`, and `impressions` histograms show right-skewed distributions, indicating that most of the data is concentrated at lower values. `spend` and `transactions` have a moderate positive correlation (0.87), meaning more `spend` also tends to lead to more `transactions`. The negative correlation between `display` and `impressions` (-0.39) suggests that there may be an inverse relationship, possibly indicating fewer impressions when display time increases.
+
+c. **What is your interpretation of the relationship between variables `spend` and `clicks`? Provide your reasons.** <br>
+The scatter plot and correlation coefficient between `spend` and `clicks` (0.97) suggest a very strong positive linear relationship. This means that as marketing spend increases, the number of clicks increases almost proportionally. This could indicate effective marketing, where increasing spend directly drives more user engagement.
+
+## Simple Linear Regression
+
+By using simple linear regression, we want to estimate the *daily revenue* of the company given *daily send* of money on pay-per-click. Thus, we use a simple linear regression model to regress the variable `spend` (daily send of money on pay-per-click) on the target variable `revenue` (daily revenue). First, we report a scatter plot of the `spend` vs `revenue`, along with the least-squares regression line as follows
+
+```{r}
+ggplot(marketing, aes(x = spend, y = revenue)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE) +
+    labs(title = "Daily Revenue Against Campaign Spend",
+          x = "Daily spend (£)",
+          y = "Daily revenue (£)") +
+    theme_minimal() + ggtitle("Scotor plot with Linear Regression line")
+```
+
+To create the regression line, we used function `lm` which is for fitting linear models:
+
+```{r}
+reg_1 = lm(revenue ~ spend, data = marketing)
+```
+
+To know more about this function, type `?lm` in your Console. To see the summary of the regression results, we have
+```{r}
+summary(reg_1)
+```
+
+a. **Give the estimated regression equation?**
+
+The regression equation is given by the formula:
+
+\[
+\hat{Y} = \beta_0 + \beta_1 X
+\]
+
+Based on the regression output:
+
+- \(\beta_0 = 15.7058\) (Intercept)
+- \(\beta_1 = 5.2517\) (Slope for spend)
+
+Thus, the estimated regression equation is:
+
+\[
+\hat{\text{revenue}} = 15.7058 + 5.2517 \times \text{spend}
+\]
+
+b. **What is the estimated value of the slope $\beta_1$? Explain clearly and interpret its value?**
+
+The slope \(\beta_1 = 5.2517\) means that for every additional unit of `spend`, the revenue is expected to increase by approximately 5.25 units. This indicates a positive relationship between `spend` and `revenue`, implying that higher spending generally leads to higher revenue.
+
+c. **What would you conclude from the estimated *Residual standard error*?**
+The residual standard error is 93.82. This value represents the average distance that the observed data points fall from the regression line. In this case, the residual standard error suggests a moderate fit of the model, meaning there is still a significant amount of variability around the predicted values.
+
+d. **What would you conclude from the estimated *R-square*?**
+The R-squared value is 0.6232, meaning that approximately 62.32% of the variability in `revenue` is explained by the `spend`. This suggests a moderately strong relationship between the two variables, but there is still a portion (37.68%) of variability not explained by the model, likely due to other factors not included in the model.
+
+e. **Estimate the regression equation when `spend` is 25?**
+We can estimate the revenue when `spend = 25` using the regression equation:
+
+\[
+\hat{\text{revenue}} = 15.7058 + 5.2517 \times 25 = 146.9983
+\]
+
+Thus, the estimated revenue when `spend = 25` is approximately 147.
+
+f. **Estimate the regression equation when `spend` is 200?**
+We can estimate the revenue when `spend = 200`:
+
+\[
+\hat{\text{revenue}} = 15.7058 + 5.2517 \times 200 = 1066.0458
+\]
+
+Thus, the estimated revenue when `spend = 200` is approximately 1066.
+
+g. **Verify whether it is reasonable to trust the estimated value in the previous part? Why? Explain your answer.**
+It may not be reasonable to fully trust the estimate for `spend = 200` because it falls outside the range of the observed data. As seen in the scatter plot, most data points fall below a `spend` value of 100. Predicting beyond this range involves extrapolation, which can be unreliable since the relationship between `spend` and `revenue` may not hold for values outside the observed data.
+
+## Multiple Linear Regression
+
+The illustrate the multiple regression modeling using the *marketing* dataset, we shall add the predictor `display` to the model, and observe whether the quality of the model has improved or not. In this case, the equation for the multiple regression with the predictors is:
+
+$$ \hat{y} = b_0 + b_1 x_1 + b_2 x_2 $$
+Therefore, by using function `lm` we have:
+```{r}
+multi_reg = lm(revenue ~ spend + display, data = marketing)
+
+summary(multi_reg)
+```
+
+a. **Give the estimated regression equation?** <br>
+\[
+\hat{\text{revenue}} = -41.4377 + 5.3556 \times \text{spend} + 104.2878 \times \text{display}
+\]
+
+This equation includes both the `spend` and `display` variables as predictors of revenue.
+
+b. **What would you conclude from the estimated *Residual standard error*?** <br>
+The residual standard error is 78.14. This represents the average difference between the actual `revenue` values and those predicted by the model. Compared to the previous model (which had a residual standard error of 93.82), this model fits the data better.
+
+c. **What would you conclude from the estimated *R-square*?** <br>
+The R-squared for this model is 0.7455, which means that 74.55% of the variability in `revenue` is explained by `spend` and `display`. This is an improvement compared to the R-squared of 0.6232 from the previous model, indicating that this model explains more of the variation in the data.
+
+d. **Compare the estimated regression model from this question with the estimated regression model from the previous part. Which one do you recommend for this dataset? Support your claim.** <br>
+The current model, which includes both `spend` and `display`, is preferred. It has a lower residual standard error and a higher R-squared value, indicating a better fit and explaining more variability in the data.
+
+
+## Model Specification: Choosing the Correct Regression Model
+
+In the *marketing* dataset, we have only 7 predictors. But, most of business projects use dozens if not hundreds of predictors. We therefore need a method to ease the selection of the best regression model. This method is called *stepwise regression*. In stepwise regression, helpful predictors are entered into the model one at a time, starting with the most helpful predictors. Because of multicollinearity or other effects, when several helpful variables are entered, one of them may no longer be considered helpful any more, and should be dropped. For this reason, stepwise regression adds the most helpful predictors into the model and at a time and then checks to see if they all still belong. Finally, the stepwise algorithm can find no further helpful predictors and converges to a final model. 
+
+To apply *stepwise regression* to the *marketing* dataset, first and foremost, we should build a linear model with all the available predictors included, so that we can have an understanding of the model, as well as to use the result of this model in the upcoming model selections. `revenue ~ .` inside the `lm()` function means the linear model includes all the columns in the data as predictors other than price.
+
+```{r}
+ml_all = lm(revenue ~ ., data = marketing)
+
+summary(ml_all)
+```
+
+**What is your interpretation of this model? Should we keep all the predictors in our model? Support your claim.** <br>
+The model explains 78.29% of the variability in revenue (R-squared = 0.7829), with a residual standard error of 77.61, indicating a decent fit. However, all predictors (spend, clicks, impressions, display, transactions, click.rate, conversion.rate) have p-values > 0.05, meaning they are not statistically significant. Thus, we should consider removing some of the least significant variables to simplify the model in order to avoid overfitting. 
+
+### Stepwise Regression
+
+For *stepwise regression*, the function `step()` should be called and the direction is set to `both` so that the algorithm can add and drop predictors in every iteration. Once it is called, the iterating process will proceed by itself.
+
+From the summary of the first iteration where we include all possible predictors, we can see that the model dropped `spend`, which is the predictor with the highest P-value in this model. As a result, in the second iteration when we analyze the impact of each predictor, the variable `spend` has a plus sign instead of a minus sign in front of it, meaning the impact is measured when the variable `spend` is added to our model.
+
+Finally, when dropping/adding any variable will not give a positive impact to our model in terms of performance, the stepwise process is done.
+
+
+```{r}
+ml_step = step(ml_all, direction = "both")
+```
+
+The see the selected regression model based on the *stepwise regression*, we can use function `summary()` as follows
+```{r}
+summary(ml_step)
+```
+
+**Compare the estimated regression model from this section with the estimated regression models from the previous parts (part 1.2 and part 1.3). Which one do you recommend for this dataset? Support your claim.** <br>
+The Stepwise Regression Model is recommended. Despite having a similar R-squared value (0.7822) to the full model, it offers lower residual standard error (72.29 compared to 77.61), indicating better fit, and significant predictors (`clicks` and `display`), unlike the full model where no predictors were significant.
+
+## Verifying Model Assumptions
+
+Before a model can be implemented, the requisite model assumptions must be verified. Using a model whose assumptions are not verified is like building a house whose foundation may be cracked. Making predictions using a model where the assumptions are violated may lead to erroneous and overoptimistic results, with costly consequences when deployed.
+
+These assumptions are:
+
+* *linearity*, 
+* *independence*, 
+* *normality*,  
+* *constant variance*. 
+
+We may be checked using the above assumptions by the follow plots
+
+```{r, fig.show = "hold", fig.align = 'default', out.width = "50%"}
+lm_select = lm(revenue ~ display + clicks, data = marketing)
+
+plot(lm_select)  
+```
+
+**Do you believe the assumptions underlying this regression model are valid? Provide evidence to support your claim.** <br>
+- *Linearity:* the residuals seem to scatter randomly around the red line, which suggests that the linearity assumption holds.
+- *Independence:* No distinct pattern or clustering of residuals is seen, supporting the assumption of independence.
+- *Normality:* Most points fall near the diagonal line, indicating that the residuals are approximately normally distributed.
+- *Constant variance:* The residuals seem relatively evenly spread across fitted values, and the red line is mostly flat, which supports the assumption of constant variance.

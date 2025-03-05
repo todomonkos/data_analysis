@@ -1,0 +1,130 @@
+---
+title: "house"
+output: html_document
+date: "2025-02-05"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Nonlinear Regression Analysis (30 points)
+
+We want to apply *nonlinear* regression models to analyze a dataset which is called *house* and it is available in the [**liver**](https://CRAN.R-project.org/package=liver) package. Basically, we want to apply a *nonlinear regression* to estimate price of houses. 
+
+## *house* dataset
+
+The *house* dataset contains 6 features and 414 records. The target feature is `unit.price` and the remaining 5 variables are predictors. The variables are:
+
+* `house.age`: house age (numeric, in year).
+* `distance.to.MRT`: distance to the nearest MRT station (numeric).
+* `stores.number`: number of convenience stores (numeric).
+* `latitude`: latitude (numeric).
+* `longitude`: longitude (numeric).
+* `unit.price`: house price of unit area (numeric).
+
+We import the *house* dataset and report the structure of the dataset:
+
+```{r}
+data(house)
+
+str(house)
+```
+
+It shows the dataset contains `r nrow(house)` records and `r ncol(house)` variables/features. The dataset has `r ncol(house) - 1` predictors along with a target variable `unit.price` as a numerical-continuous variable.
+
+Below is a simple visualization of all the variables:
+```{r, fig.height = 10, fig.width = 10}
+pairs.panels(house)
+```
+
+The above plot presents bivariate scatter plots (bottom-left), histograms (diagonals), and correlations (upper-right). 
+
+## Simple Linear Regression
+
+Here we first apply *simple linear regression* then in the next section we will appy nonlinear regression.
+By using simple linear regression, we want to estimate the *unit price* of the houses given *age* of the houses. Thus, we use a simple linear regression model to regress the variable `house.age`  on the target variable `unit.price`. First, we report a scatter plot of the `house.age` vs `unit.price`, along with the least-squares regression line as follows
+
+```{r}
+ggplot(data = house, aes(x = house.age, y = unit.price)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE) +
+    labs(title = "Age of the houses against unit price of the houses",
+          x = "House age (year)",
+          y = "Unit Price ($)") +
+    theme_minimal() + ggtitle("Scotor plot with Linear Regression line")
+```
+
+To create the regression line, we used function `lm()` which is for fitting linear models:
+
+```{r}
+reg_1 = lm(unit.price ~ house.age, data = house)
+```
+
+To see the summary of the regression results, we have
+```{r}
+summary(reg_1)
+```
+
+a. **What would you conclude from the estimated *Residual standard error*?** <br>
+The residual standard error is 13.32, which gives an idea of how much the actual `unit.price` values deviate from the predicted values based on the `house.age`. While this provides an estimate of the model's prediction error, it is important to evaluate this value in the context of the overall scale of the `unit.price` values to determine whether it is large or small.
+
+b. **What would you conclude from the estimated *R-square*?** <br>
+The R-squared value is 0.04434, meaning that only 4.43% of the variability in the `unit.price` is explained by the house.age. This is a very low R-squared, suggesting that the `house.age` does not strongly explain or predict the `unit.price`. While the relationship is statistically significant (p-value = 1.56e-05), the small R-squared indicates that other factors not included in the model likely have a large impact on unit prices. 
+
+## Noninear Regression
+
+By using nonlinear regression, we want to estimate the *unit price* of the houses given *age* of the houses. Thus, we use a simple linear regression model to regress the variable `house.age`  on the target variable `unit.price`. First, we report a scatter plot of the `house.age` vs `unit.price`, along with the least-squares regression line as follows
+
+```{r}
+ggplot(data = house, aes(x = house.age, y = unit.price)) +
+    geom_point() + 
+    stat_smooth(method = "lm", formula = y ~ x + I(x ^ 2), se = FALSE) +
+    theme_minimal() + ggtitle("Scotor plot with Nonlinear Regression line")
+```
+
+To create the *nonlinear regression*, we used function `lm()` which is for fitting linear models:
+```{r}
+reg_nonlinear = lm(unit.price ~ poly(house.age, 2), data = house[-271,])
+```
+
+To see the summary of the regression results, we have
+```{r}
+summary(reg_nonlinear)
+```
+
+a. **What would you conclude from the estimated *Residual standard error*?** <br>
+The residual standard error for this model is 11.54, which is lower than the residual standard error of 13.32 from the previous simple linear regression model. This indicates that the predictions from the current model are, on average, closer to the actual `unit.price` values, and the model provides a better fit to the data.
+
+b. **What would you conclude from the estimated *R-square*?**
+The R-squared for this model is 0.2209, meaning that 22.09% of the variability in `unit.price` is explained by the `house.age` when modeled in nonlinear way. 
+
+c. **Compare the estimated regression model from this question with the estimated regression model from the previous part. Which one do you recommend for this dataset? Support your claim.** 
+This is a significant improvement compared to the previous simple linear regression model. The higher R-squared value indicates that this model explains more of the variance in house prices, suggesting a stronger relationship between `house.age` and `unit.price` when accounting for nonlinearity.
+
+## Model Specification: Choosing the Correct Regression Model
+
+We want here to choose the best regression model, by applying *stepwise regression* to the *house* dataset. First, we should build a regression model with all predictors included, so that we can have an understanding of the model, as well as to use the result of this model in the upcoming model selections:
+
+```{r}
+reg_all = lm(unit.price ~ poly(house.age, 2) + distance.to.MRT + stores.number + 
+                           latitude + longitude, data = house)
+
+summary(reg_all)
+```
+
+### Stepwise Regression
+
+For *stepwise regression*, the function `step()` should be called and the direction is set to `both` so that the algorithm can add and drop predictors in every iteration. Once it is called, the iterating process will proceed by itself.
+
+```{r}
+reg_step = step(reg_all, direction = "both")
+```
+
+The see the selected regression model based on the *stepwise regression*, we can use function `summary()` as follows
+```{r}
+summary(reg_step)
+```
+
+**Compare the estimated regression model from this section with the estimated regression model from the previous parts. Which one do you recommend for this dataset? Support your claim.** 
+The model after stepwise regression is preferred. The Residual Standard Error is slightly lower (8.598 vs. 8.609), meaning it provides a marginally better fit. The adjusted R-squared is slightly higher (0.6007 vs. 0.5997), indicating that it explains slightly more of the variance. And the variable longitude was removed as it was not statistically significant in the original model (p-value = 0.926), simplifying the model without losing explanatory power.
