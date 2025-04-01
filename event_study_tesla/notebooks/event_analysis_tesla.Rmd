@@ -1,7 +1,17 @@
 ---
-title: "The Impact of Elon Musk's 2018 'Funding Secured' Tweet:"
-output: html_document
-date: "2025-02-25"
+title: "<center> The Impact of Elon Musk's 2018 'Funding Secured' Tweet on Tesla's Stock Performance <center>"
+author: "<center> Domonkos Toth <center>"
+date: "<center> `r Sys.Date()` <center>"
+output:
+  html_document:
+    number_sections: yes
+    fig_caption: yes
+    toc: yes
+    fig_width: 7
+    fig_height: 5
+    theme: cosmo
+    highlight: tango
+    code_folding: show
 ---
 <style>
 

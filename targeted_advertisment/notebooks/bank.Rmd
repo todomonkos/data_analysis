@@ -1,14 +1,25 @@
 ---
-title: "bank"
-output: html_document
-date: "2025-02-05"
+title: "<center> Data analysis for targeted marketing campaign <center>"
+author: "<center> Domonkos Toth <center>"
+date: "<center> `r Sys.Date()` <center>"
+output:
+  html_document:
+    number_sections: yes
+    fig_caption: yes
+    toc: yes
+    fig_width: 7
+    fig_height: 5
+    theme: cosmo
+    highlight: tango
+    code_folding: show
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, 
+                         comment = " ", error = FALSE, fig.align = 'center')
 ```
 
-# Exploratory Data Analysis for bank dataset  (70 points)
+# Introduction
 
 In this part, we want to use Exploratory Data Analysis to explore the *bank* dataset that is available in the **R** package [**liver**](https://CRAN.R-project.org/package=liver). You could find more information about the *bank* dataset at the following link on pages 4-5: [manual of the liver package](https://cran.r-project.org/web/packages/liver/liver.pdf); Or  [here](https://rdrr.io/cran/liver/man/bank.html).
 
@@ -18,7 +29,7 @@ In this part, we want to use Exploratory Data Analysis to explore the *bank* dat
 
 Find the best strategies to improve for the next marketing campaign. How can the financial institution have greater effectiveness for future marketing campaigns? To make a data-driven decision, we need to analyze the last marketing campaign the bank performed and identify the patterns that will help us find conclusions to develop future strategies.
 
-### Bank direct marketing info
+## Bank direct marketing info
 
 Two main approaches for enterprises to promote products/services are: 
 
@@ -33,22 +44,20 @@ Banks are interested to increase financial assets. One strategy is to offer attr
 
 A Term Deposit is a deposit that a bank or a financial institution offers with a fixed rate (often better than just opening a deposit account), in which your money will be returned at a specific maturity time. For more information with regards to Term Deposits please check [here](https://www.investopedia.com/terms/t/termdeposit.asp).
 
-## Data Undestanding
-
-The *bank* dataset is related to direct marketing campaigns of a Portuguese banking institution. You can find more information related to this dataset at: [https://rdrr.io/cran/liver/man/bank.html](https://rdrr.io/cran/liver/man/bank.html)
-
-The marketing campaigns were based on phone calls. Often, more than one contact (to the same client) was required, to access if the product (bank term deposit) would be (or not) subscribed. The classification goal is to predict if the client will subscribe to a term deposit (variable deposit).
-
-We import the *bank* dataset:
-```{r}
-data(bank)      
+**Loading necessary libararies for analysis**
+```{r library_setup}
+library(ggplot2)  
+library(liver)  
+library(GGally)  
+library(psych)  
+library(ggcorrplot)
 ```
 
-We can see the structure of the dataset by using the `str` function:
+We import and assess the structure of the *bank* dataset:
 ```{r}
+data(bank)
 str(bank)
 ```
-
 It shows that the *bank* dataset as a `data.frame` has `r ncol(bank)` variables and `r nrow(bank)` observations. The dataset has `r ncol(bank) - 1` predictors along with the target variable `deposit` which is a binary variable with 2 levels "yes" and "no". The variables in this dataset are:
 
 * `age`: numeric.
@@ -78,7 +87,7 @@ Target variable:
 
 * `deposit`: Indicator of whether the client subscribed a term deposit; binary: "yes" or "no".
 
-**Following Part 1, apply the Exploratory Data Analysis to the *bank* dataset.**
+# Exploratory Data Analysis of the *bank* dataset.
 ```{r}
 #Checking for the type of the variables
 column_classes_bank <- lapply(bank, class)
@@ -97,6 +106,7 @@ classify_variable_bank <- function(class) {
 variable_types <- sapply(column_classes_bank, function(cls) classify_variable_bank(cls[[1]]))
 variable_types
 ```
+
 ## 2.3 Investigate the target variable *deposit* 
 **Bar plot for the target variable *deposit* by using function ggplot()**
 ```{r}
@@ -108,6 +118,7 @@ ggplot(data = bank) +
 ```{r}
 summary(bank$deposit)
 ```
+Imbalanced dataset, we have to consider this for the modelling
 
 ## 2.4 Invetigating the relationship between categorical predictors and *deposit* 
 
@@ -322,7 +333,7 @@ correlation_matrix <- cor(numeric_vars)
 ggcorrplot(correlation_matrix, type = "lower", lab = TRUE, lab_size = 3) 
 ```
 
-## Chi-Square Test
+### Chi-Square Test
 
 In the *bank* dataset, test whether there is a relationship between the target variable “`deposit`” and the variable “`education`” with $\alpha=0.05$.
 
@@ -347,57 +358,15 @@ Since the p-value is `r round(chi_squared_result$p.value, 4)`, which is less tha
 
 This indicates that there is a significant relationship between the "deposit" and "education" variables, which could suggests that the level of education may influence customers' decisions to make a deposit informing targeted marketing strategies and customer engagement efforts.
 
-## Data Preparation
+# Modelling
 
-We partition the *bank* dataset randomly into two groups: train set (80%) and test set (20%). Here, we use the `partition()` function from the *liver* package:
+include: 
+Using knn
+logistic regression
+naive bayes
+decision tree
 
-```{r}
-set.seed(5)
-
-data_sets = partition(data = bank, prob = c(0.8, 0.2))
-
-train_set = data_sets$part1
-test_set  = data_sets$part2
-
-actual_test  = test_set$deposit
-```
-
-Note that here we are using the `set.seed()` function to create reproducible results. 
-
-We want to validate the partition by testing whether the proportion of the target variable `deposit` differs between the two data sets. We use a Two-Sample Z-Test for the difference in proportions. To run the test, we use the `prop.test()` function in **R**:
-```{r}
-x1 = sum(train_set$deposit == "yes")
-x2 = sum(test_set $deposit == "yes")
-
-n1 = nrow(train_set)
-n2 = nrow(test_set)
-
-prop.test(x = c(x1, x2), n = c(n1, n2))
-```
-
-Based on the output, answer the following questions:
-
-a. **Why is the above hypothesis test suitable for the above research question? Provide your reasons.**
-<br>
-The Two-Sample Z-Test for proportions is a suitable hypothesis test because we want to compare the proportion of clients subscribing to a term deposit (the "yes" value) between the two datasets (train and test sets). This test helps determine if there is a statistically significant difference between the proportions of two independent groups. Since the data is categorical (binary outcome: "yes" or "no"), a proportion test is appropriate.
-
-b. **Specify the null and alternative hypotheses?** <br>
-**Null Hypothesis (H₀)**: The proportion of customers who subscribe to a term deposit is the same in both the train and test datasets.<br>
-  \[
-  H_0: \pi_1 = \pi_2
-  \]
-  
-- **Alternative Hypothesis (H₁)**: The proportion of customers who subscribe to a term deposit is different between the train and test datasets. <br>
-  \[
-  H_1: \pi_1 \neq \pi_2
-  \]
-Where \(\pi_1\) is the proportion of customers subscribing in the training set, and \(\pi_2\) is the proportion of customers subscribing in the test set.
-
-c. **Explain that you reject or do not reject the null hypothesis, at $\alpha=0.05$. What would be your statistical conclusion?** <br>
-Given the **p-value = 0.1217**, which is **greater** than the significance level **𝛼 = 0.05**, we **fail to reject the null hypothesis**.
-
-d. **What would be a non-statistical interpretation of your findings in c?**
-In practical terms, this means that the way we partitioned the data between training and testing groups resulted in similar proportions of customers subscribing to term deposits. Therefore, the partition is likely to represent the overall dataset well, and the training and test sets are comparable in terms of the key target variable (term deposit subscriptions). This is important for ensuring that the model is trained on data representative of what it will encounter during testing.
+also consider sampling because of the imbalance in the categories
 
 ## Data Preparation
 
@@ -504,7 +473,7 @@ print(accuracy_knn_10)
 ```
 Thus, increasing k from 3 to 10 leads to better accuracy, suggesting that using 10 neighbors is more effective for this dataset.
 
-## Model evaluation by MSE
+# Model evaluation by MSE
 
 To evaluate the accuracy of the predictions, we calculate the Mean Square Error (MSE) by using the `mse()` function from the **liver** package:
 
@@ -531,6 +500,7 @@ prob_knn_10 = kNN(formula, train = train_set, test = test_set, k = 10, type = "p
 To visualize the model performance, we could report the ROC curve plot by using the `plot.roc()` function from the **pROC** package:
 
 ```{r}
+library(pROC)
 roc_knn_3 = roc(actual_test, prob_knn_3)
 
 roc_knn_10 = roc(actual_test, prob_knn_10)
