@@ -20,44 +20,28 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
 ```
 
 # Introduction
+In recent years, the saturation of marketing messages and increasing consumer resistance have led to a decline in the effectiveness of traditional mass marketing approaches. Almost everybody have felt annoyance at one point in their lives by the overwhelming number of marketing emails in their inbox. In this context, data driven direct marketing has gained importance as a more targeted and cost-effective alternative. The present analysis draws on the dataset originally analyzed by Moro, Cortez, and Laureano (2011), which contains real-world data from a series of direct marketing campaigns conducted by a Portuguese bank. You can also access the dataset on the [UCI Machine Learning Repository](https://archive.ics.uci.edu/dataset/222/bank+marketing). The core objective of these campaigns was to promote term deposits—long-term savings products offering fixed interest rates—to selected clients via telemarketing.
 
-In this part, we want to use Exploratory Data Analysis to explore the *bank* dataset that is available in the **R** package [**liver**](https://CRAN.R-project.org/package=liver). You could find more information about the *bank* dataset at the following link on pages 4-5: [manual of the liver package](https://cran.r-project.org/web/packages/liver/liver.pdf); Or  [here](https://rdrr.io/cran/liver/man/bank.html).
+## Bank Direct Marketing: Context and Motivation
+There are two main strategies available to banks and enterprises when promoting financial products:
+- *Mass marketing*: targets the general public indiscriminately, often resulting in very low conversion rates (typically under 1%);
+- *Directed marketing*: focuses on a specific subset of potential clients who are more likely to respond positively to the offer.
+While the latter tends to be more effective in generating responses, it also comes with challenges, such as higher initial data requirements and potential concerns over customer privacy. Nonetheless, in a competitive and cost-sensitive financial environment, banks are under pressure to increase financial assets while simultaneously reducing operational costs. Directed marketing serves as a strategic response, especially when paired with data-driven insights that optimize the selection of contacts and minimize resource expenditure. The campaigns studied here offered attractive term deposits as a means of encouraging clients to invest. The underlying business goal was not only to increase subscription rates but also to do so by contacting fewer individuals, thereby improving efficiency and lowering the cost per acquisition.
 
-## Business Understanding
+## What is a Term Deposit?
+A Term Deposit is a financial product where a customer deposits a fixed amount of money with a bank for a specified period at a predetermined interest rate. These instruments are considered low-risk and are especially attractive to conservative investors seeking predictable returns. Importantly, the interest rate is often higher than that of a regular savings account. The funds are usually inaccessible until the end of the term unless penalties are paid. For more detailed information on term deposits, refer to [Investopedia](https://www.investopedia.com/terms/t/termdeposit.asp).
 
-*bank*: which is related to direct marketing campaigns of a Portuguese banking institution. You can find the description on the dataset [here](https://rdrr.io/cran/liver/man/bank.html).
+## Analytical Framework
+The study conducted by Moro et al. followed the CRISP-DM methodology—a widely adopted framework for structuring data mining projects. This includes the stages of business understanding, data understanding, data preparation, modeling, evaluation, and deployment. Their work involved multiple iterations of this process to improve model performance, using classification algorithms such as Naïve Bayes, Decision Trees, and Support Vector Machines (SVM). The ultimate goal was to build predictive models capable of identifying the most promising contacts, thereby enhancing marketing efficiency. The current analysis adopts a similar methodological approach using R. 
 
-Find the best strategies to improve for the next marketing campaign. How can the financial institution have greater effectiveness for future marketing campaigns? To make a data-driven decision, we need to analyze the last marketing campaign the bank performed and identify the patterns that will help us find conclusions to develop future strategies.
-
-## Bank direct marketing info
-
-Two main approaches for enterprises to promote products/services are: 
-
-* *mass campaigns*: targeting general indiscriminate public,
-* *directed marketing*, targeting a specific set of contacts. 
-
-In general, positive responses to mass campaigns are typically very low (less than 1%). On the other hand, direct marketing focuses on targets that are keener to that specific product/service, making this kind of campaign more effective. However, direct marketing has some drawbacks, for instance, it may trigger a negative attitude towards banks due to the intrusion of privacy.
-
-Banks are interested to increase financial assets. One strategy is to offer attractive long-term deposit applications with good interest rates, in particular, by using directed marketing campaigns. Also, the same drivers are pressing for a reduction in costs and time. Thus, there is a need for an improvement in efficiency: lesser contacts should be done, but an approximate number of successes (clients subscribing to the deposit) should be kept.
-
-### What is a Term Deposit?
-
-A Term Deposit is a deposit that a bank or a financial institution offers with a fixed rate (often better than just opening a deposit account), in which your money will be returned at a specific maturity time. For more information with regards to Term Deposits please check [here](https://www.investopedia.com/terms/t/termdeposit.asp).
-
-**Loading necessary libararies for analysis**
-```{r library_setup}
-library(ggplot2)  
-library(liver)  
-library(GGally)  
-library(psych)  
-library(ggcorrplot)
+# Setup
+**We import and assess the structure of the *bank* dataset:**
+```{r setup}
+library(readr)
+data <- read.csv("/Users/todomonkos/Documents/it/github/data_analysis/targeted_advertisment/data/bank-full.csv", sep = ";", header = TRUE, stringsAsFactors = FALSE)
+str(data)
 ```
 
-We import and assess the structure of the *bank* dataset:
-```{r}
-data(bank)
-str(bank)
-```
 It shows that the *bank* dataset as a `data.frame` has `r ncol(bank)` variables and `r nrow(bank)` observations. The dataset has `r ncol(bank) - 1` predictors along with the target variable `deposit` which is a binary variable with 2 levels "yes" and "no". The variables in this dataset are:
 
 * `age`: numeric.
@@ -86,6 +70,10 @@ Other attributes:
 Target variable:
 
 * `deposit`: Indicator of whether the client subscribed a term deposit; binary: "yes" or "no".
+
+
+
+
 
 # Exploratory Data Analysis of the *bank* dataset.
 ```{r}
